@@ -5,16 +5,16 @@
   <title>Сердечко</title>
 </head>
   <body style="margin:0;">
-    <canvas style= "background: #0000; "></canvas>
+    <canvas style= "background: #000; "></canvas>
     <script>
       var canvas = document.quereSelector('canvas');
       var ctx = canvas.getContext('2d');
       canvas.width = w = window.innerWidth;
-      canvas.height=w=window.innerHeight;
+      canvas.height=h=window.innerHeight;
       var an= 0.04, k= -0.07, no=5;
       function animate(){
         an=an+k;
-        var x=w/2 + (w-25)/2*Math.sin(an)*Math.sin (an)*Math.sin(an);
+        var x=w/2 + (w-25)/2*Math.sin(an)*Math.sin(an)*Math.sin(an);
         var y= -(-w/2+13*(13*Math.cos(an)-5*Math.cos(2*an)-2*Math.cos(3*an)-Math.cos(4*an)));
         ctx.beginPath();
         ctx.moveto(x,y);
@@ -45,7 +45,7 @@
         requestAnimationFrame(animate);
       }
         requestAnimationFrame(animate);
-          
+    
       
           
     </script>
