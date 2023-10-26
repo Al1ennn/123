@@ -104,4 +104,20 @@
 		transform: scale(1.1) rotate(45deg);
 	}
 }
+	.heart {
+	-webkit-animation-name: 'anime';
+	-webkit-animation-duration: 300ms;
+	-webkit-animation-iteration-count: infinite;
+	-webkit-animation-direction: alternate;
+	-webkit-animation-timing-function: ease-in;
+}
+
+	@-webkit-keyframes 'anime' {
+	from {
+		-webkit-transform: scale(1) rotate(45deg);
+	}
+	to {
+		-webkit-transform: scale(1.1) rotate(45deg);
+	}
+}
 </html>
