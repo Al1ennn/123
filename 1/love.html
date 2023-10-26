@@ -20,9 +20,9 @@
         ctx.moveto(x,y);
         ctx.strokeStyle='hsl('+360*Math.random+',100%, 50%)';
         for (var a =0; a < 2*Math.PI; a+= 0.01 {
-             var xt= x + 8*Math.cos(no*a) + Math.cos(a);
-          var yt= y + 8*Math.cos(no*a) + Math.sin(a);
-          ctx.lineTo(xt, yt);
+             var xt= x + 8*Math.cos(no*a) * Math.cos(a);
+             var yt= y + 8*Math.cos(no*a) * Math.sin(a);
+             ctx.lineTo(xt, yt);
         }
         ctx.stroke();
         ctx.cLosePath();
