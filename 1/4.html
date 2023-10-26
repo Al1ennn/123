@@ -1,82 +1,113 @@
-<canvas id="c"></canvas>
-
-#c {
-  display: block;
-  margin: 50px auto;
-  margin: calc(50vh - 250px) auto;
+<div class="demo">
+   <div id="heart"><div class="k"></div></div>
+</div>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+}
+.demo{
+  bottom: 0;
+  height: 120px;
+  left: 0;
+  margin: auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 120px;
+}
+/* Сердце */
+#heart {
+  position: relative;
+  width: 100px;
+  height: 90px;
+  margin: 0 auto;
+  animation: b 1.5s ease-in-out infinite;
 }
 
-
-var c = document.getElementById("c");
-var ctx = c.getContext("2d");
-var cw = c.width = 500;
-var ch = c.height = 500;
-var cx = cw / 2,  cy = ch / 2;
-var rad = Math.PI / 180;
-var howMany = 500;
-var p = [];
-var colors = ["242,41,41", "222,80,80", "247,111,111", "255,145,145", "252,199,199"];
-ctx.strokeStyle = "white";
-ctx.globalAlpha = .7;
-
-function particles() 
-{
-  this.r = randomIntFromInterval(2, 12);
-  var innerR = Math.round(Math.random() * 130) + 1;
-  var innerA = Math.round(Math.random() * 360) + 1;
-  this.x = cx + innerR * Math.cos(innerA * rad);
-  this.y = cy + 20 + innerR * Math.sin(innerA * rad);
-  this.ix = (Math.random()) * (Math.random() < 0.5 ? -1 : 1);
-  this.iy = (Math.random()) * (Math.random() < 0.5 ? -1 : 1);
-  this.alpha = Math.random();
-  this.c = "rgba(" + colors[Math.round(Math.random() * colors.length) + 1] + "," + this.alpha + ")";
+#heart:before,
+#heart:after {
+  position: absolute;
+  content: "";
+  left: 50px;
+  top: 0;
+  width: 50px;
+  height: 80px;
+  background: red;
+  -moz-border-radius: 50px 50px 0 0;
+  -webkit-border-radius: 50px;
+  border-radius: 50px 50px 0 0;
+  -moz-transform: rotate(-45deg);
+  -ms-transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+  -moz-transform-origin: 0 100%;
+  -ms-transform-origin: 0 100%;
+  -webkit-transform-origin: 0 100%;
+  transform-origin: 0 100%;
 }
 
-for (var i = 0; i < howMany; i++) 
-{
-  p[i] = new particles();
+#heart:after {
+  left: 0;
+  -moz-box-shadow: 3px -45px 5px 3px rgba(255, 255, 255, 0.5);
+  -webkit-box-shadow: 3px -45px 5px 3px rgba(255, 255, 255, 0.5);
+  box-shadow: 3px -45px 5px 3px rgba(255, 255, 255, 0.5);
+  -moz-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+  transform: rotate(45deg);
+  -moz-transform-origin: 100% 100%;
+  -ms-transform-origin: 100% 100%;
+  -webkit-transform-origin: 100% 100%;
+  transform-origin: 100% 100%;
 }
 
-function Draw() 
-{
-  ctx.fillStyle = "rgba(255,255,255,.1)";
-  ctx.fillRect(0, 0, cw, ch);
-  for (var i = 0; i < p.length; i++) 
-{
-    ctx.fillStyle = p[i].c;
-    // Текущий путь для  isPointInPath 
-    thePath(p[i].r);
+.k {
+  position: absolute;
+  top: 16px;
+  left: 55px;
+  z-index: 3;
+  width: 0px;
+  height: 0px;
+  animation: a 1.5s infinite;
+}
 
-    if (ctx.isPointInPath(p[i].x, p[i].y)) 
-{
-      p[i].x += p[i].ix;
-      p[i].y += p[i].iy;
-      ctx.beginPath();
-      ctx.arc(p[i].x, p[i].y, p[i].r, 0, 2 * Math.PI);
-      ctx.fill();
-
-    } else {
-      p[i].ix = -1 * p[i].ix;
-      p[i].iy = -1 * p[i].iy;
-      p[i].x += p[i].ix;
-      p[i].y += p[i].iy;
-    }
+@keyframes a {
+  0% {
+    -moz-box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
+    -webkit-box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
   }
-  window.requestAnimationFrame(Draw);
+  50% {
+    -moz-box-shadow: 0 0 65px 25px rgba(255, 255, 255, 0.5);
+    -webkit-box-shadow: 0 0 65px 25px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 65px 25px rgba(255, 255, 255, 0.5);
+  }
+  100% {
+    -moz-box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
+    -webkit-box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 65px 15px rgba(255, 255, 255, 0.5);
+  }
 }
-window.requestAnimationFrame(Draw);
-
-function thePath(r) 
-{
-  //Рисуем наше сердечко
-  ctx.beginPath();
-  ctx.moveTo(250, 200);
-  ctx.arc(350, 200, 100 - r, Math.PI, Math.PI * 0.23);
-  ctx.lineTo(250, 450);
-  ctx.arc(150, 200, 100 - r, Math.PI * 0.77, 0);
+@keyframes b {
+  0% {
+    -moz-transform: scale(1, 1);
+    -ms-transform: scale(1, 1);
+    -webkit-transform: scale(1, 1);
+    transform: scale(1, 1);
+  }
+  50% {
+    -moz-transform: scale(1.1, 1.1);
+    -ms-transform: scale(1.1, 1.1);
+    -webkit-transform: scale(1.1, 1.1);
+    transform: scale(1.1, 1.1);
+  }
+  100% {
+    -moz-transform: scale(1, 1);
+    -ms-transform: scale(1, 1);
+    -webkit-transform: scale(1, 1);
+    transform: scale(1, 1);
+  }
 }
-
-function randomIntFromInterval(mn, mx) 
-{
-  return ~~(Math.random() * (mx - mn + 1) + mn);
-}
+</style>
