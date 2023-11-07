@@ -5,26 +5,26 @@
     <title>Біографія</title>
     <style>
 
-    .up{
+    .height{
 			text-transform: uppercase;
 		}
 
-		.back{
+		.backward{
 			font-weight: bold;
 		}
 
-		.header{
+		.info{
 			font-size:140%;
 		}
-        .biography{
+        .bin{
 			text-align: center;
 			font-size: 22px;
 		}
-		.content{
+		.basic{
 			text-align: center;
 		}
 		
-		.to-main{
+		.luck{
 			font-style: italic;
 		}
    li {
@@ -65,7 +65,7 @@ li:active{
     <h1 id="top"class = "bin">Автобіографія Данилейчук Владислав Ігорович</h1>
     <p a href="index.html" class = "to-main" >Назад на головну</a></p>
     <article id="main">
-      <h3>Зміст</h3>
+      <h3 class = "basic" >Зміст</h3>
       <ul>
         <li><a href="#section1">Базова інформація</a></li>
         <li><a href="#section2">Дитинство</a></li>
@@ -75,7 +75,7 @@ li:active{
       </ul>
     </article>
     <article id="section1">
-      <h3>Базова інформація</h3>
+      <h3 class = "info">Базова інформація</h3>
       <p class = "now1">
         Мене звати Владислав, мені 18 років. Я народився і проживаю в місті
         Івано-Франківську. У мене є мрія стати програмістом до якої я буду йти.
@@ -86,9 +86,9 @@ li:active{
         знаходимо час для родинного відпочинку в горах, в лісі і на ріці.
       </p>
     </article>
-    <a href="#main">До змісту</a>
+    <a href="#main" class = "backward" >До змісту</a>
     <article id="section2">
-      <h3>Дитинство</h3>
+      <h3 class = "info">Дитинство</h3>
        <p class = "now2">
         Коли мені було півтора року, я на кухні впав зі стільчика і вибив
         передній зуб. Після цього я до чотирьох років не розмовляв. Коли я пішов
@@ -99,9 +99,9 @@ li:active{
         молоку, яке я не пив до того часу, і їсти борщ.
       </p>
     </article>
-    <a href="#main">До змісту</a>
+    <a href="#main" class = "backward">До змісту</a>
     <article id="section3">
-      <h3>Шкільні роки</h3>
+      <h3 class = "info">Шкільні роки</h3>
        <p class = "now3">
         Через те, що я пізно почав говорити, до школи пішов в сім з половиною
         років. В класі був найстаршим. Я – шульга. Перша вчителька Наталя
@@ -112,9 +112,9 @@ li:active{
         геометрія, хімія, інформатика, англійська мова.
       </p>
     </article>
-    <a href="#main">До змісту</a>
+    <a href="#main"  class = "backward" >До змісту</a>
     <article id="section4">
-      <h3>Поза школою</h3>
+      <h3 class = "info">Поза школою</h3>
        <p class = "now4">
         Мій клас був дуже дружнім. Весь вільний час після школи ми проводили
         разом. Якщо була гарна погода грали у волейбол чи баскетбол. Любили
@@ -126,9 +126,9 @@ li:active{
         того, щоб вміти його ремонтувати.
       </p>
     </article>
-    <a href="#main">До змісту</a>
+    <a href="#main" class = "backward"  >До змісту</a>
     <article id="section5">
-      <h3>Університет</h3>
+      <h3 class = "info">Університет</h3>
       <p class = "now5">
         Я студент першого курсу Прикарпатського національного університету імені
         Василя Стефаника. Оскільки розумію перспективи сучасного ринку праці та
@@ -140,8 +140,8 @@ li:active{
         розвиватись професійно.
       </p>
     </article>
-    <a href="#main">До змісту</a>
+    <a href="#main"  class = "backward"  >До змісту</a>
     <hr>
-    <a href="#top">Уверх</a>
+    <a href="#top" class = "height" >Уверх</a>
   </body>
 </html>
