@@ -1,0 +1,119 @@
+<title>nowadays</title>
+	<meta charset = "utf-8">
+<head>
+<style>
+
+.centered-text{
+			text-align: center;
+		}
+
+		.to-main{
+			font-style: italic;
+		}
+
+		.nowadays{
+			text-align: center;
+			font-size: 22px;
+		}
+		
+		ul {
+			list-style-type:none;
+			padding:0
+
+		}
+		ul li:nth-child(odd){
+			background-color:grey;
+			color:white;
+		}
+		ul li:nth-child(even){
+			background-color:white;
+			color:#000;
+		}
+		ol li:nth-child(3):hover,
+		ol li:nth-child(5):hover{
+			cursor:pointer;
+		}
+		ol li:nth-child(4){
+			background-color:red;
+		}
+		
+
+
+	</style>
+	
+</head>
+<body>
+	<h1>Сьогодення Данилейчук Владислав Ігорович</h1>
+
+	<p><a href="index.html">Назад на головну</a></p>
+
+	<h2>Мій типовий список покупок</h2>
+
+
+	<ul>
+		<li>Речі для гігієни
+			<ul>
+				<li>Зубна щітка</li>
+				<li>Зубна паста</li>
+				<li>Шампунь</li>
+				<li>Мило</li>
+			</ul>
+		</li>
+
+		<li>Овочі
+			<ul>
+				<li>Капуста</li>
+				<li>Помідор</li>
+				<li>Цибуля</li>
+				<li>Картопля</li>
+			</ul>
+		</li>
+		<li>Каші
+			<ul>
+				<li>Гречка</li>
+				<li>Пшенична</li>
+				<li>Рис</li>
+			</ul>
+		</li>
+		<li>Хліб</li>
+       <li>Рибу</li>
+
+	</ul>
+
+	<h2>Мій улювлений десерт</h2>
+	<ol>
+		<li>Для тіста потрібно
+			<ol>
+				<li>2 яйця</li>
+				<li>1 ст.цукру</li>
+				<li>22 ст.л. молока</li>
+				<li>3ст.л. меду</li>
+				<li>3ст.л. масла</li>
+			    <li>70 г какао</li>
+			    <li>1,5 ч.л. соди з оцтом</li>
+			    <li>Все довести до кипіння. Коли охолоне, додати муку, замісити м’яке тісто. Розтачувати тонко. Пекти 5 хв.</li>
+
+			</ol>
+		</li>	
+		<li>Для крему
+			<ol>
+				<li>1,5 л молока</li>
+				<li>11 ст.л. манки</li>
+				<li>1,5 ст. цукру</li>
+				<li>Все заварити</li>
+				 <li>500 г масла збити з 100 г пудри (цукор корегувати по смаку) і додавати манну масу охолоджену по 1 ложці. Добре збити, додати ванільний цукор і трошки цедри з лимона.</li>
+			</ol>
+		</li>
+		
+
+
+
+
+
+	</ol>
+
+
+
+
+</body>
+</html>
