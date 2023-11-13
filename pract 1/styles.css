@@ -1,0 +1,62 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px; /* Optional: set a maximum width for the content */
+    margin: 0 auto; /* Center the container */
+    padding: 0 20px; /* Optional: add some padding to the sides of the container */
+}
+
+/* Define the 12-column grid styles */
+.row::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+[class*="col-"] {
+    float: left;
+    width: 100%;
+}
+
+@media only screen and (min-width: 768px) {
+    /* Tablet layout styles */
+    .col-sm-1 { width: 8.33%; }
+    .col-sm-2 { width: 16.66%; }
+    /* ... Repeat for other column sizes up to 12 */
+}
+
+@media only screen and (min-width: 992px) {
+    /* Desktop layout styles */
+    .col-md-1 { width: 8.33%; }
+    .col-md-2 { width: 16.66%; }
+    /* ... Repeat for other column sizes up to 12 */
+}
+
+/* Additional styling for your content */
+/* You can replace these styles with your own */
+.text-block {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 1%;
+}
+
+/* Customize styles for different screen sizes */
+/* Replace the background colors and other styles with your own */
+@media only screen and (min-width: 992px) {
+    /* Desktop styles */
+    .text-block { background-color: #f2f2f2; }
+}
+
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+    /* Tablet styles */
+    .text-block { background-color: #d9d9d9; }
+}
+
+@media only screen and (max-width: 767px) {
+    /* Mobile styles */
+    .text-block { background-color: #b3b3b3; }
+}
