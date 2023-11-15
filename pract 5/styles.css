@@ -9,8 +9,7 @@
 }
 .text1, .text2, .text3{
     float: right;
-    border: 1px solid black;
-    border-radius: 0px 7px 0px 7px;
+    border: 2px solid black;
     display: block;
     width: 80px;
     text-align: center;
@@ -33,10 +32,10 @@
     margin-right:10px;
     margin-bottom:20px;
     border: 2px solid black;
-    border-radius:10px;
+    
 } 
 .block p{
-    padding: 10px;
+    padding: 20px;
 }
 
 
