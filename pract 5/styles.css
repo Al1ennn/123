@@ -1,28 +1,28 @@
 .row{
     width: 100%;
 }
-.main_text{
+.main{
     width: 100%;
     font-size:50px;
     text-align: center;
     margin-bottom: 22px;
 }
-.text1, .text2, .text3{
+.caption 1, .caption 2, .caption 3{
     float: right;
     border: 2px solid black;
     display: block;
     width: 100px;
     text-align: center;
 }
-.text1{
+.caption 1{
     background-color: orange;
     color: black;
 }
-.text2{
+.caption 2{
     background-color: ruby;
     color:  black;
 }
-.text3{
+.caption 3{
     background-color: peach;
     color:  black;
 }
@@ -37,13 +37,6 @@
 .block p{
     padding: 20px;
 }
-
-
-h1{
-  text-align: center;  
-}
-
-
     /* Large devices */
     @media (min-width: 992px) {
     .col-lg-1, .col-lg-2, .col-lg-3, .col-lg-4, .col-lg-5, .col-lg-6, .col-lg-7, .col-lg-8,
