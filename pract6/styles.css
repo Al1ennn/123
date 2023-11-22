@@ -1,0 +1,278 @@
+#mybasic {
+    background-color: blue;
+    color: azure;
+    text-decoration: none;
+    display: block;
+    width: 230px;
+    text-align: center;
+    border: 2px dotted #160b3f;
+    margin-bottom: 2px;
+    font-size: 120%;
+  }
+  #mybasic:hover {
+    background-color: magenta;
+    color: black;
+  }
+  #mybasic:active {
+    background-color: yellow;
+    color: green;
+  }
+
+  #mychildhood {
+    background-color: blue;
+    color: azure;
+    text-decoration: none;
+    display: block;
+    width: 230px;
+    text-align: center;
+    border: 2px dotted #160b3f;
+    margin-bottom: 2px;
+    font-size: 120%;
+  }
+  #mychildhood:hover {
+    background-color: magenta;
+    color: #6a3333;
+  }
+  #mychildhood:active {
+    background-color: yellow;
+    color: green;
+  }
+
+  #myschool {
+    background-color: blue;
+    color: azure;
+    text-decoration: none;
+    display: block;
+    width: 230px;
+    text-align: center;
+    border: 2px dotted #160b3f;
+    margin-bottom: 2px;
+    font-size: 120%;
+  }
+  #myschool:hover {
+    background-color: magenta;
+    color: #6a3333;
+  }
+  #myschool:active {
+    background-color: yellow;
+    color: green;
+  }
+  #myafter {
+    background-color: blue;
+    color: azure;
+    text-decoration: none;
+    display: block;
+    width: 230px;
+    text-align: center;
+    border: 2px dotted #160b3f;
+    margin-bottom: 2px;
+    font-size: 120%;
+  }
+  #myafter:hover {
+    background-color: magenta;
+    color: #6a3333;
+  }
+  #myafter:active {
+    background-color: yellow;
+    color: green;
+  }
+  #myuni {
+    background-color: blue;
+    color: azure;
+    text-decoration: none;
+    display: block;
+    width: 230px;
+    text-align: center;
+    border: 2px dotted #160b3f;
+    margin-bottom: 2px;
+    font-size: 120%;
+  }
+  #myuni:hover {
+    background-color: magenta;
+    color: #7654a6;
+  }
+  #myuni:active {
+    background-color: yellow;
+    color: green;
+  }
+ 
+
+  #basic {
+    background-color: #de5f5f;
+    color: #0d2e66;
+    border:solid 1px;
+  }
+  #childhood {
+    background-color: #cd5980;
+    color: #600f60;
+    border:solid 1px;
+  }
+  #school {
+    background-color: #53d2b3;
+    color: #105d6f;
+    border:solid 1px;
+  }
+  #after {
+    background-color: #599fa4;
+    color: #280e70;
+    border:solid 1px;
+  }
+  #uni {
+    background-color: #e72b89;
+    color: #2f0f3f;
+    border:solid 1px;
+  }
+
+  h1{
+   text-align: center;
+   font-size: 22px;
+  }
+
+.index{
+   font-style:italic;
+  }
+
+  h2{
+    text-align: center;
+    font-size: 144%;
+  }
+
+
+ h3{
+  text-align: center;
+  font-size: 144%;
+  }
+
+.cont{
+   font-weight: 650;
+  }
+
+.up{
+   text-transform: uppercase;
+  }
+
+  .container{
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+  }
+
+  @media (min-width: 992px) {
+  
+   .col-lg-1 {
+    flex-basis: 8.33%;
+   }
+   .col-lg-2 {
+    flex-basis: 16.66%;
+   }
+   .col-lg-3 {
+    flex-basis: 25%;
+   }
+   .col-lg-4 {
+    flex-basis: 33.33%;
+   }
+   .col-lg-5 {
+    flex-basis: 41.66%;
+   }
+   .col-lg-6 {
+    flex-basis: 50%;
+   }
+   .col-lg-7 {
+    flex-basis: 58.33%;
+   }
+   .col-lg-8 {
+    flex-basis: 66.66%;
+   }
+   .col-lg-9 {
+    flex-basis: 75%;
+   }
+   .col-lg-10 {
+    flex-basis: 83.33%;
+   }
+   .col-lg-11 {
+    flex-basis: 91.66%;
+   }
+   .col-lg-12 {
+    flex-basis: 100%;
+   }
+  }
+  
+  /*medium */
+  @media (min-width: 768px) and (max-width: 992px){
+   .col-md-1 {
+    flex-basis: 8.33%;
+   }
+   .col-md-2 {
+    flex-basis: 16.66%;
+   }
+   .col-md-3 {
+    flex-basis: 25%;
+   }
+   .col-md-4 {
+    flex-basis: 33.33%;
+   }
+   .col-md-5 {
+    flex-basis: 41.66%;
+   }
+   .col-md-6 {
+    flex-basis: 50%;
+   }
+   .col-md-7 {
+    flex-basis: 58.33%;
+   }
+   .col-md-8 {
+    flex-basis: 66.66%;
+   }
+   .col-md-9 {
+    flex-basis: 75%;
+   }
+   .col-md-10 {
+    flex-basis: 83.33%;
+   }
+   .col-md-11 {
+    flex-basis: 91.66%;
+   }
+   .col-md-12 {
+    flex-basis: 100%;
+   }
+  }
+  
+  /*small*/
+  @media (max-width: 768px){
+   .col-sm-1 {
+    flex-basis: 8.33%;
+   }
+   .col-sm-2 {
+    flex-basis: 16.66%;
+   }
+   .col-sm-3 {
+    flex-basis: 25%;
+   }
+   .col-sm-4 {
+    flex-basis: 33.33%;
+   }
+   .col-sm-5 {
+    flex-basis: 41.66%;
+   }
+   .col-sm-6 {
+    flex-basis: 50%;
+   }
+   .col-sm-7 {
+    flex-basis: 58.33%;
+   }
+   .col-sm-8 {
+    flex-basis: 66.66%;
+   }
+   .col-sm-9 {
+    flex-basis: 75%;
+   }
+   .col-sm-10 {
+    flex-basis: 83.33%;
+   }
+   .col-sm-11 {
+    flex-basis: 91.66%;
+   }
+   .col-sm-12 {
+    flex-basis: 100%;
+   }
+  }
