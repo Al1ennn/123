@@ -4,128 +4,272 @@ const ctx = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 400;
 
-// --- НАЛАШТУВАННЯ 3D КАМЕРИ ---
-const FOV = 250; // Поле зору (ширше = більше спотворення)
-const CAMERA_Y = -120; // Камера дивиться трохи зверху
-const HORIZON_Y = canvas.height / 2; // Лінія горизонту
-const Z_LIMIT = 2000; // Дальність промальовки
+// ==========================================
+// 1. НАЛАШТУВАННЯ ТА ПОСИЛАННЯ НА КАРТИНКИ
+// ==========================================
 
-// --- СТАН ГРИ ---
+// ВСТАВ СЮДИ СВОЇ ПОСИЛАННЯ З GITHUB!
+const ASSET_URLS = {
+    // 7 кадрів бігу
+    run: [
+        'ПОСИЛАННЯ_НА_RUN_0.png', 
+        'ПОСИЛАННЯ_НА_RUN_1.png',
+        'ПОСИЛАННЯ_НА_RUN_2.png',
+        'ПОСИЛАННЯ_НА_RUN_3.png',
+        'ПОСИЛАННЯ_НА_RUN_4.png',
+        'ПОСИЛАННЯ_НА_RUN_5.png',
+        'ПОСИЛАННЯ_НА_RUN_6.png'
+    ],
+    // 6 кадрів стрибка
+    jump: [
+        'ПОСИЛАННЯ_НА_JUMP_0.png',
+        'ПОСИЛАННЯ_НА_JUMP_1.png',
+        'ПОСИЛАННЯ_НА_JUMP_2.png',
+        'ПОСИЛАННЯ_НА_JUMP_3.png',
+        'ПОСИЛАННЯ_НА_JUMP_4.png',
+        'ПОСИЛАННЯ_НА_JUMP_5.png'
+    ],
+    // Перешкоди (якщо є картинки, встав посилання. Якщо немає - залиш порожнім або старими)
+    obstacles: {
+        low: 'puddle.png', // Калюжа
+        high: 'sign.png',  // Знак
+        wall: 'boxes.png'  // Коробки
+    }
+};
+
+const WHITE_THRESHOLD = 235; // Налаштування видалення фону (255 - ідеально білий)
+
+// ==========================================
+// 2. СИСТЕМА ЗАВАНТАЖЕННЯ ТА ОЧИЩЕННЯ (ХРОМАКЕЙ)
+// ==========================================
+
+async function loadAndCleanImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        
+        img.onload = () => {
+            const tempCanvas = document.createElement('canvas');
+            const tCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            tCtx.drawImage(img, 0, 0);
+            
+            const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imgData.data;
+            
+            // Видаляємо білий фон
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] > WHITE_THRESHOLD && data[i+1] > WHITE_THRESHOLD && data[i+2] > WHITE_THRESHOLD) {
+                    data[i + 3] = 0; // Прозорість
+                }
+            }
+            tCtx.putImageData(imgData, 0, 0);
+            resolve(tempCanvas);
+        };
+        img.onerror = () => {
+            console.warn(`Не вдалося завантажити картинку: ${url}`);
+            resolve(null); // Якщо помилка, повертаємо null, щоб гра не впала
+        };
+    });
+}
+
+const Assets = {
+    run: [],
+    jump: [],
+    obstacles: {},
+
+    async init() {
+        // Показуємо екран завантаження
+        console.log("Завантаження та очищення картинок...");
+        
+        for (let url of ASSET_URLS.run) {
+            const img = await loadAndCleanImage(url);
+            if (img) this.run.push(img);
+        }
+        for (let url of ASSET_URLS.jump) {
+            const img = await loadAndCleanImage(url);
+            if (img) this.jump.push(img);
+        }
+        
+        this.obstacles.low = await loadAndCleanImage(ASSET_URLS.obstacles.low);
+        this.obstacles.high = await loadAndCleanImage(ASSET_URLS.obstacles.high);
+        this.obstacles.wall = await loadAndCleanImage(ASSET_URLS.obstacles.wall);
+        
+        console.log("Всі картинки готові!");
+    }
+};
+
+// ==========================================
+// 3. НАЛАШТУВАННЯ 3D СВІТУ ТА СТАНУ
+// ==========================================
+
+const FOV = 250; 
+const CAMERA_Y = -120; 
+const HORIZON_Y = canvas.height / 2; 
+const Z_LIMIT = 2000; 
+const PLAYER_Z = 150; 
+
 let score = 0;
-let baseSpeed = 15; // Початкова швидкість світу
+let baseSpeed = 15; 
 let speedMultiplier = 1;
 let isGameOver = false;
 let isPaused = false;
-let animationId;
+let obstaclesArray = [];
 
-// --- ОБ'ЄКТ ГРАВЦЯ ---
-// Гравець завжди знаходиться на фіксованій Z-координаті (перед камерою)
-const PLAYER_Z = 150; 
+// ==========================================
+// 4. ОБ'ЄКТ ГРАВЦЯ З АНІМАЦІЄЮ
+// ==========================================
+
 const player = {
-    lane: 0,           // -1 (Ліва), 0 (Центр), 1 (Права)
-    visualLane: 0,     // Для плавного руху (Lerp)
-    y: 0,              // Висота (0 = на землі, мінус = у повітрі)
-    vy: 0,             // Вертикальна швидкість
+    lane: 0,           
+    visualLane: 0,     
+    y: 0,              
+    vy: 0,             
     gravity: 1.8,
     jumpPower: -22,
     
-    // Розміри
-    baseWidth: 60,
-    baseHeight: 100,
-    currentHeight: 100, // Змінюється при присіданні
+    baseWidth: 100, 
+    baseHeight: 120,
+    currentHeight: 120, 
     
-    // Стани
     isGrounded: true,
     isRolling: false,
-    rollTimer: 0
+    rollTimer: 0,
+
+    // Система анімації
+    animState: 'run', // 'run' або 'jump'
+    frameIndex: 0,
+    animTimer: 0,
+    animSpeed: 4, // Зміна кадру кожні 4 тіки (швидкість бігу)
+
+    update() {
+        // Фізика стрибка
+        if (!this.isGrounded) {
+            this.vy += this.gravity;
+            this.y += this.vy;
+            if (this.y >= 0) { 
+                this.y = 0;
+                this.vy = 0;
+                this.isGrounded = true;
+                this.animState = 'run'; // Повернулась на землю
+                this.frameIndex = 0;
+            } else {
+                this.animState = 'jump';
+            }
+        }
+
+        // Логіка перекату (присідання)
+        if (this.isRolling) {
+            this.rollTimer--;
+            if (this.rollTimer <= 0) {
+                this.isRolling = false;
+                this.currentHeight = this.baseHeight; 
+            }
+        }
+
+        // Анімація (перемикання кадрів)
+        this.animTimer++;
+        if (this.animTimer >= this.animSpeed) {
+            this.animTimer = 0;
+            const currentArray = Assets[this.animState];
+            if (currentArray && currentArray.length > 0) {
+                // Зациклення анімації
+                this.frameIndex = (this.frameIndex + 1) % currentArray.length;
+            }
+        }
+    },
+
+    draw(proj) {
+        const drawW = this.baseWidth * proj.scale;
+        const drawH = this.currentHeight * proj.scale; // Змінюється при присіданні
+        const drawX = proj.x - drawW / 2;
+        const drawY = proj.y - drawH;
+
+        const currentArray = Assets[this.animState];
+        if (currentArray && currentArray.length > 0) {
+            // Малюємо поточний кадр з масиву
+            const currentImg = currentArray[this.frameIndex];
+            ctx.drawImage(currentImg, drawX, drawY, drawW, drawH);
+        } else {
+            // Заглушка, якщо картинки ще не завантажились
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(drawX, drawY, drawW, drawH);
+        }
+    }
 };
 
-// --- МАСИВ ПЕРЕШКОД ---
-let obstacles = [];
+// ==========================================
+// 5. КЕРУВАННЯ
+// ==========================================
 
-// --- КЕРУВАННЯ ---
 window.addEventListener('keydown', (e) => {
     if (isGameOver && e.code === 'Enter') {
         resetGame();
         return;
     }
-
     if (e.code === 'Escape') {
         isPaused = !isPaused;
         return;
     }
-
     if (isPaused || isGameOver) return;
 
-    // Рух вліво/вправо
-    if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > -1) {
-        player.lane--;
-    }
-    if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 1) {
-        player.lane++;
-    }
+    // Зміна смуги
+    if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > -1) player.lane--;
+    if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 1) player.lane++;
 
     // Стрибок
     if ((e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') && player.isGrounded && !player.isRolling) {
         player.vy = player.jumpPower;
         player.isGrounded = false;
+        player.frameIndex = 0; // Скидаємо анімацію стрибка на перший кадр
     }
 
     // Перекат (Присідання)
     if ((e.code === 'ArrowDown' || e.code === 'KeyS') && player.isGrounded && !player.isRolling) {
         player.isRolling = true;
-        player.currentHeight = 40; // Гравець стає "низьким"
-        player.rollTimer = 30; // Скільки кадрів триває перекат
+        player.currentHeight = 60; // Стискаємо гравця візуально
+        player.rollTimer = 35; 
     }
 });
 
-// --- ФУНКЦІЯ 3D-ПРОЕКЦІЇ ---
-// Перетворює світові X, Y, Z у координати Canvas X, Y та Масштаб
+// ==========================================
+// 6. ЛОГІКА СВІТУ ТА ПЕРЕШКОД
+// ==========================================
+
 function project(x, y, z) {
-    if (z <= 0) return null; // Об'єкт за камерою
-    
+    if (z <= 0) return null; 
     const scale = FOV / z;
-    const projX = canvas.width / 2 + (x * scale);
-    const projY = HORIZON_Y + ((y - CAMERA_Y) * scale);
-    
-    return { x: projX, y: projY, scale: scale };
+    return { 
+        x: canvas.width / 2 + (x * scale), 
+        y: HORIZON_Y + ((y - CAMERA_Y) * scale), 
+        scale: scale 
+    };
 }
 
-// --- СТВОРЕННЯ ПЕРЕШКОД ---
 function spawnObstacle() {
     const lanes = [-1, 0, 1];
     const lane = lanes[Math.floor(Math.random() * lanes.length)];
     
-    // Три типи перешкод
     const types = [
-        // 1. Низька (Треба стрибати). Наприклад: бар'єр.
-        { type: 'low', y: 0, w: 70, h: 50, color: '#e74c3c' },
-        
-        // 2. Висока (Треба присідати). Наприклад: арка, знак на ніжці.
-        // Малюється високо над землею (y: -80)
-        { type: 'high', y: -80, w: 70, h: 40, color: '#f1c40f' },
-        
-        // 3. Стіна (Треба об'їжджати).
-        { type: 'wall', y: 0, w: 70, h: 120, color: '#34495e' }
+        { type: 'low', y: 0, w: 80, h: 40, img: Assets.obstacles.low, color: '#e74c3c' },
+        { type: 'high', y: -90, w: 60, h: 80, img: Assets.obstacles.high, color: '#f1c40f' },
+        { type: 'wall', y: 0, w: 90, h: 100, img: Assets.obstacles.wall, color: '#34495e' }
     ];
 
     const obsType = types[Math.floor(Math.random() * types.length)];
 
-    obstacles.push({
-        lane: lane,
-        z: Z_LIMIT, // Спавн на горизонті
-        y: obsType.y,
-        w: obsType.w,
-        h: obsType.h,
-        type: obsType.type,
-        color: obsType.color
+    obstaclesArray.push({
+        lane: lane, z: Z_LIMIT, y: obsType.y, w: obsType.w, h: obsType.h,
+        type: obsType.type, img: obsType.img, color: obsType.color
     });
 }
 
 function resetGame() {
     score = 0;
     speedMultiplier = 1;
-    obstacles = [];
+    obstaclesArray = [];
     player.lane = 0;
     player.visualLane = 0;
     player.y = 0;
@@ -137,7 +281,10 @@ function resetGame() {
     isPaused = false;
 }
 
-// --- ГОЛОВНИЙ ЦИКЛ ГРИ ---
+// ==========================================
+// 7. ГОЛОВНИЙ ЦИКЛ ГРИ
+// ==========================================
+
 function updateAndDraw() {
     if (isGameOver || isPaused) {
         if (isGameOver) drawGameOver();
@@ -148,79 +295,41 @@ function updateAndDraw() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // --- 1. ОНОВЛЕННЯ ФІЗИКИ ---
-    
-    // Прискорення гри
-    speedMultiplier += 0.0005;
+    // Логіка швидкості та рахунку
+    speedMultiplier += 0.0003;
     const currentSpeed = baseSpeed * speedMultiplier;
     score += currentSpeed * 0.01;
 
-    // Плавний рух гравця (Lerp)
+    // Оновлення гравця
     player.visualLane += (player.lane - player.visualLane) * 0.2;
-
-    // Гравітація та стрибок
-    if (!player.isGrounded) {
-        player.vy += player.gravity;
-        player.y += player.vy;
-        
-        if (player.y >= 0) { // Торкання землі
-            player.y = 0;
-            player.vy = 0;
-            player.isGrounded = true;
-        }
-    }
-
-    // Логіка перекату
-    if (player.isRolling) {
-        player.rollTimer--;
-        if (player.rollTimer <= 0) {
-            player.isRolling = false;
-            player.currentHeight = player.baseHeight; // Повертаємо нормальний зріст
-        }
-    }
+    player.update();
 
     // Спавн перешкод
-    // Чим більша швидкість, тим рідше вони мають з'являтися (щоб не накладалися)
-    const spawnRate = 40 - (speedMultiplier * 5); 
-    if (Math.random() * 100 < 2) { 
-        // Запобігаємо спавну двох перешкод надто близько
-        if (obstacles.length === 0 || obstacles[obstacles.length-1].z < Z_LIMIT - 300) {
+    if (Math.random() * 100 < 2.5) { 
+        if (obstaclesArray.length === 0 || obstaclesArray[obstaclesArray.length-1].z < Z_LIMIT - 350) {
             spawnObstacle();
         }
     }
 
-    // --- 2. МАЛЮВАННЯ СВІТУ (3D) ---
-    
-    // Небо
-    ctx.fillStyle = '#2c3e50';
-    ctx.fillRect(0, 0, canvas.width, HORIZON_Y);
-    
-    // Підлога
-    ctx.fillStyle = '#95a5a6';
-    ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y);
+    // --- МАЛЮВАННЯ ФОНУ ТА СМУГ ---
+    ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, HORIZON_Y); // Небо
+    ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y); // Підлога
 
-    // Смуги (Лінії перспективи)
-    ctx.strokeStyle = '#ecf0f1';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2;
     for (let i = -1.5; i <= 1.5; i += 1) {
         const far = project(i * 150, 0, Z_LIMIT);
         const near = project(i * 150, 0, 10);
         if (far && near) {
-            ctx.beginPath();
-            ctx.moveTo(far.x, far.y);
-            ctx.lineTo(near.x, near.y);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(near.x, near.y); ctx.stroke();
         }
     }
 
-    // --- 3. МАЛЮВАННЯ ТА КОЛІЗІЯ ПЕРЕШКОД ---
-    
-    // Сортуємо по Z (щоб дальні малювалися першими)
-    obstacles.sort((a, b) => b.z - a.z);
+    // --- МАЛЮВАННЯ ПЕРЕШКОД ТА КОЛІЗІЯ ---
+    obstaclesArray.sort((a, b) => b.z - a.z);
 
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        let obs = obstacles[i];
-        obs.z -= currentSpeed; // Рух на гравця
+    for (let i = obstaclesArray.length - 1; i >= 0; i--) {
+        let obs = obstaclesArray[i];
+        obs.z -= currentSpeed; 
 
         const proj = project(obs.lane * 150, obs.y, obs.z);
 
@@ -228,104 +337,69 @@ function updateAndDraw() {
             const drawW = obs.w * proj.scale;
             const drawH = obs.h * proj.scale;
             const drawX = proj.x - drawW / 2;
-            const drawY = proj.y - drawH; // Малюємо вгору від землі
+            const drawY = proj.y - drawH; 
 
-            // Малюємо перешкоду (прямокутник)
-            ctx.fillStyle = obs.color;
-            ctx.fillRect(drawX, drawY, drawW, drawH);
-            
-            // Малюємо "ніжки" для високих перешкод (наприклад, знак)
-            if (obs.type === 'high') {
-                 ctx.fillStyle = 'black';
-                 ctx.fillRect(proj.x - 2, proj.y, 4, -obs.y * proj.scale); // Стовпчик до землі
+            // Якщо картинка є - малюємо її, якщо ні - кольоровий блок
+            if (obs.img) {
+                ctx.drawImage(obs.img, drawX, drawY, drawW, drawH);
+            } else {
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(drawX, drawY, drawW, drawH);
             }
 
-            // --- 4. 3D КОЛІЗІЯ (Найважливіша частина) ---
-            // 1. Перевірка глибини Z: Чи об'єкт в зоні гравця?
-            // Товщина перешкоди умовно 40 одиниць. Гравець на Z = 150.
+            // Малюємо ніжку для високого знаку
+            if (obs.type === 'high') {
+                 ctx.fillStyle = '#2c3e50';
+                 ctx.fillRect(proj.x - 2, proj.y, 4, -obs.y * proj.scale); 
+            }
+
+            // Колізія (тільки коли об'єкт близько до гравця)
             if (obs.z < PLAYER_Z + 20 && obs.z > PLAYER_Z - 40) {
-                
-                // 2. Перевірка смуги X: (допускаємо невелике відхилення при зміні смуги)
                 if (Math.abs(player.visualLane - obs.lane) < 0.6) {
-                    
-                    // 3. Перевірка висоти Y: (Різні типи = різна логіка вбивства)
-                    
-                    if (obs.type === 'low') {
-                        // Якщо гравець не підстрибнув вище перешкоди
-                        if (player.y > -obs.h) isGameOver = true;
-                    } 
-                    else if (obs.type === 'high') {
-                        // Якщо гравець не пригнувся (або підстрибнув прямо в неї)
-                        // player.y (0) - player.currentHeight (100) = верхівка гравця
-                        const playerTop = player.y - player.currentHeight;
-                        const obsBottom = obs.y; // -80
-                        
-                        // Якщо голова гравця вище, ніж низ перешкоди
-                        if (playerTop < obsBottom) isGameOver = true;
-                    }
-                    else if (obs.type === 'wall') {
-                        // Стіна б'є завжди, якщо ти на цій смузі
-                        isGameOver = true;
-                    }
+                    if (obs.type === 'low' && player.y > -obs.h) isGameOver = true;
+                    else if (obs.type === 'high' && (player.y - player.currentHeight) < obs.y) isGameOver = true;
+                    else if (obs.type === 'wall') isGameOver = true;
                 }
             }
         }
-
-        // Видалення сміття
-        if (obs.z < 0) obstacles.splice(i, 1);
+        if (obs.z < 0) obstaclesArray.splice(i, 1);
     }
 
-    // --- 5. МАЛЮВАННЯ ГРАВЦЯ ---
+    // --- МАЛЮВАННЯ ГРАВЦЯ ---
     const pProj = project(player.visualLane * 150, player.y, PLAYER_Z);
     if (pProj) {
-        const drawW = player.baseWidth * pProj.scale;
-        const drawH = player.currentHeight * pProj.scale; // Змінюється при присіданні
-        const drawX = pProj.x - drawW / 2;
-        const drawY = pProj.y - drawH;
-
-        // Малюємо гравця (синій блок)
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(drawX, drawY, drawW, drawH);
-        
-        // Малюємо "обличчя", щоб розуміти, куди він дивиться (і щоб бачити, як він присідає)
-        ctx.fillStyle = 'white';
-        ctx.fillRect(drawX + drawW * 0.2, drawY + drawH * 0.1, drawW * 0.6, drawH * 0.2);
+        player.draw(pProj);
     }
 
     // --- UI ---
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'left';
+    ctx.fillStyle = 'white'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left';
     ctx.fillText(`Рахунок: ${Math.floor(score)}`, 20, 40);
-    ctx.fillText(`Швидкість: ${Math.floor(currentSpeed)}`, 20, 70);
 
     requestAnimationFrame(updateAndDraw);
 }
 
-// Функції екранів
+// Екрани
 function drawGameOver() {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.font = '50px Arial';
-    ctx.fillText('ГРА ЗАКІНЧЕНА', canvas.width/2, 200);
-    ctx.font = '20px Arial';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.fillStyle = '#e74c3c'; ctx.textAlign = 'center'; ctx.font = 'bold 55px Arial';
+    ctx.fillText('АВАРІЯ!', canvas.width/2, 190);
+    ctx.fillStyle = 'white'; ctx.font = '24px Arial';
     ctx.fillText(`Ваш рахунок: ${Math.floor(score)}`, canvas.width/2, 240);
     ctx.fillText('Натисніть ENTER для рестарту', canvas.width/2, 280);
 }
 
 function drawPause() {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.font = '50px Arial';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = 'bold 50px Arial';
     ctx.fillText('ПАУЗА', canvas.width/2, 200);
-    ctx.font = '20px Arial';
-    ctx.fillText('Натисніть ESC щоб продовжити', canvas.width/2, 240);
 }
 
-// Запуск
-resetGame();
-updateAndDraw();
+// ==========================================
+// 8. СТАРТ ГРИ
+// ==========================================
+
+// Спочатку завантажуємо і чистимо всі картинки, потім запускаємо цикл
+Assets.init().then(() => {
+    resetGame();
+    updateAndDraw();
+});
