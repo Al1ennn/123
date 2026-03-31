@@ -4,185 +4,229 @@ const ctx = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 400;
 
-// Колір, який ми хочемо зробити прозорим (Hex: #FF00FF)
-const CHROMA_KEY_COLOR = { r: 255, g: 0, b: 255 };
+// --- НАЛАШТУВАННЯ ---
+const DEBUG_MODE = false; // Зміни на true, щоб побачити зелені/червоні "хітбокси" зіткнень!
+const PINK_BG = { r: 255, g: 0, b: 255 }; // Колір, який видаляємо
 
-// Прямі посилання на GitHub
 const waiterSrc = 'https://raw.githubusercontent.com/Al1ennn/123/main/game/waiter_sprites.png';
 const obstacleSrc = 'https://raw.githubusercontent.com/Al1ennn/123/main/game/obstacles.png';
 
-// Функція для завантаження картинки та видалення фону
-function loadAndProcessImage(src) {
-    return new Promise((resolve, reject) => {
+let sprites = { waiter: null, obstacles: null };
+
+// --- 1. СИСТЕМА ВИДАЛЕННЯ ФОНУ ---
+async function loadAndCleanImage(url) {
+    return new Promise((resolve) => {
         const img = new Image();
-        img.src = src;
+        img.crossOrigin = "Anonymous"; // Важливо для роботи з пікселями через GitHub
+        img.src = url;
         img.onload = () => {
-            // Створюємо тимчасовий canvas для обробки
             const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
+            const tCtx = tempCanvas.getContext('2d');
             tempCanvas.width = img.width;
             tempCanvas.height = img.height;
+            tCtx.drawImage(img, 0, 0);
             
-            // Малюємо оригінал
-            tempCtx.drawImage(img, 0, 0);
+            const imgData = tCtx.getImageData(0, 0, img.width, img.height);
+            const data = imgData.data;
             
-            // Отримуємо дані про пікселі
-            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imageData.data;
-            
-            // Перебираємо пікселі (кожен піксель це 4 значення: RGBA)
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                
-                // Якщо колір збігається з Chroma Key, робимо альфа-канал (прозорість) = 0
-                if (r === CHROMA_KEY_COLOR.r && g === CHROMA_KEY_COLOR.g && b === CHROMA_KEY_COLOR.b) {
-                    data[i + 3] = 0; 
+                // Якщо піксель дуже близький до яскраво-рожевого - робимо прозорим
+                if (data[i] > 240 && data[i+1] < 20 && data[i+2] > 240) {
+                    data[i + 3] = 0; // Альфа-канал = 0
                 }
             }
-            
-            // Записуємо оброблені дані назад
-            tempCtx.putImageData(imageData, 0, 0);
-            
-            // Повертаємо оброблений canvas як джерело зображення
-            resolve(tempCanvas);
+            tCtx.putImageData(imgData, 0, 0);
+            resolve(tempCanvas); // Повертаємо canvas замість картинки, він малюється так само швидко
         };
-        img.onerror = reject;
     });
 }
 
-// Завантаження та запуск
-Promise.all([
-    loadAndProcessImage(waiterSrc),
-    loadAndProcessImage(obstacleSrc)
-]).then(([processedWaiter, processedObstacles]) => {
-    // Зберігаємо оброблені версії
-    images.waiter = processedWaiter;
-    images.obstacles = processedObstacles;
+// Ініціалізація гри
+async function initGame() {
+    sprites.waiter = await loadAndCleanImage(waiterSrc);
+    sprites.obstacles = await loadAndCleanImage(obstacleSrc);
     requestAnimationFrame(gameLoop);
-}).catch(err => console.error("Помилка завантаження:", err));
+}
 
-const images = { waiter: null, obstacles: null };
-
-// Параметри гри
+// --- 2. ОБ'ЄКТИ ГРИ ---
 let score = 0;
-let gameSpeed = 6;
+let gameSpeed = 7;
 let isGameOver = false;
-let frameCount = 0;
+let frames = 0;
 
 const player = {
     x: 80,
     y: 240,
-    width: 100,
-    height: 100,
+    w: 100, // Розмір малювання
+    h: 100,
+    // Хітбокс: зміщення відносно координат x, y. Це реальний розмір тіла для зіткнень.
+    hitbox: { offsetX: 35, offsetY: 20, w: 40, h: 75 },
+    
     frameX: 0,
-    frameY: 0, // Ряд бігу (згідно з твоїм спрайт-лістом)
-    jump: false,
+    frameY: 0,
     jumpV: 0,
-    gravity: 0.8
+    gravity: 1.2,    // Сильніша гравітація - швидше падає
+    jumpPower: -18,  // Сильніший початковий ривок
+    isGrounded: true,
+    spaceHeld: false // Для адаптивного стрибка
 };
 
 const obstacles = [];
+let lastObstacleX = 0; // Зберігаємо позицію останньої перешкоди
 
-// Керування
+// --- 3. КЕРУВАННЯ ---
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !player.jump && !isGameOver) {
-        player.jump = true;
-        player.jumpV = -16;
-    }
-    if (e.code === 'Enter' && isGameOver) {
-        location.reload(); 
+    if (e.code === 'Space') {
+        if (isGameOver) {
+            location.reload();
+            return;
+        }
+        player.spaceHeld = true;
+        if (player.isGrounded) {
+            player.jumpV = player.jumpPower;
+            player.isGrounded = false;
+        }
     }
 });
 
-function createObstacle() {
-    // Точні координати вирізання з твого obstacles.png
-    const types = [
-        { sx: 20, sy: 550, sw: 130, sh: 70, w: 80, h: 45 }, // Калюжа
-        { sx: 880, sy: 310, sw: 100, sh: 130, w: 55, h: 80 }, // Знак
-        { sx: 440, sy: 770, sw: 130, sh: 100, w: 70, h: 60 } // Коробки
-    ];
-    const t = types[Math.floor(Math.random() * types.length)];
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') {
+        player.spaceHeld = false;
+        // Якщо відпустили пробіл раніше - стрибок стає коротшим (зрізаємо швидкість)
+        if (player.jumpV < -6) {
+            player.jumpV = -6; 
+        }
+    }
+});
+
+// --- 4. ЛОГІКА ПЕРЕШКОД ---
+function spawnObstacle() {
+    // Мінімальна відстань між перешкодами, щоб можна було приземлитися
+    const minDistance = 400 + (Math.random() * 200); 
     
+    if (canvas.width - lastObstacleX < minDistance) return;
+
+    const types = [
+        // Координати з твого спрайту (sx, sy, sw, sh) + розміри в грі (w, h) + їхні хітбокси
+        { sx: 20, sy: 550, sw: 130, sh: 70, w: 90, h: 50, hitbox: {ox: 10, oy: 25, w: 70, h: 25} }, // Калюжа
+        { sx: 880, sy: 310, sw: 100, sh: 130, w: 60, h: 80, hitbox: {ox: 15, oy: 10, w: 30, h: 70} }, // Знак
+        { sx: 440, sy: 770, sw: 130, sh: 100, w: 80, h: 65, hitbox: {ox: 10, oy: 15, w: 60, h: 50} }  // Коробки
+    ];
+    
+    const t = types[Math.floor(Math.random() * types.length)];
     obstacles.push({
-        x: canvas.width + 100,
+        x: canvas.width,
         y: 340 - t.h,
         ...t
     });
 }
 
+// --- 5. ІГРОВИЙ ЦИКЛ ---
 function gameLoop() {
     if (isGameOver) {
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0,0, canvas.width, canvas.height);
         ctx.fillStyle = 'white';
-        ctx.font = '35px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('ГРА ЗАКІНЧЕНА!', canvas.width/2, 180);
+        ctx.font = 'bold 40px Arial';
+        ctx.fillText('АВАРІЯ!', canvas.width/2, 170);
         ctx.font = '20px Arial';
-        ctx.fillText(`Результат: ${Math.floor(score/10)}м`, canvas.width/2, 220);
-        ctx.fillText('Натисніть ENTER для рестарту', canvas.width/2, 260);
+        ctx.fillText(`Доставлено на: ${Math.floor(score/10)} метрів`, canvas.width/2, 220);
+        ctx.fillText('Натисніть ПРОБІЛ для рестарту', canvas.width/2, 260);
         return;
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Малюємо підлогу
     ctx.fillStyle = '#95a5a6';
     ctx.fillRect(0, 340, canvas.width, 60);
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 340, canvas.width, 3);
 
-    // Логіка гравця
-    if (player.jump) {
-        player.y += player.jumpV;
-        player.jumpV += player.gravity;
-        player.frameY = 2; // Ряд стрибка
-        if (player.y >= 240) {
-            player.y = 240;
-            player.jump = false;
-        }
+    // --- ФІЗИКА ГРАВЦЯ ---
+    player.jumpV += player.gravity; // Гравітація тягне вниз постійно
+    player.y += player.jumpV;
+
+    if (player.y >= 240) { // Торкання землі
+        player.y = 240;
+        player.isGrounded = true;
+        player.jumpV = 0;
+        player.frameY = 0; // Анімація їзди
+        if (frames % 6 === 0) player.frameX = (player.frameX + 1) % 5;
     } else {
-        player.frameY = 0; // Ряд бігу
-        if (frameCount % 7 === 0) player.frameX = (player.frameX + 1) % 5; 
+        player.frameY = 2; // Анімація стрибка
+        player.frameX = 0; // Зафіксувати один кадр у повітрі
     }
 
-    // Малювання офіціантки (тепер прозора!)
-    // Використовуємо оброблений images.waiter
-    ctx.drawImage(images.waiter, 
+    // Малювання гравця
+    ctx.drawImage(sprites.waiter, 
         player.frameX * 171, player.frameY * 175, 171, 175, 
-        player.x, player.y, player.width, player.height
+        player.x, player.y, player.w, player.h
     );
 
-    // Логіка перешкод
-    if (frameCount % 100 === 0) createObstacle();
-    frameCount++;
+    // --- ПЕРЕШКОДИ ТА КОЛІЗІЇ ---
+    if (frames % 60 === 0 && Math.random() < 0.6) spawnObstacle();
+
+    // Оновлюємо позицію останньої перешкоди (для логіки спавну)
+    if (obstacles.length > 0) {
+        lastObstacleX = obstacles[obstacles.length - 1].x;
+    } else {
+        lastObstacleX = 0;
+    }
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let o = obstacles[i];
         o.x -= gameSpeed;
 
-        // Малюємо перешкоду (тепер прозора!)
-        // Використовуємо оброблений images.obstacles
-        ctx.drawImage(images.obstacles, o.sx, o.sy, o.sw, o.sh, o.x, o.y, o.w, o.h);
+        ctx.drawImage(sprites.obstacles, o.sx, o.sy, o.sw, o.sh, o.x, o.y, o.w, o.h);
 
-        // Перевірка зіткнення
-        if (player.x + 30 < o.x + o.w && 
-            player.x + player.width - 30 > o.x &&
-            player.y + 20 < o.y + o.h && 
-            player.y + player.height > o.y) {
+        // -- ПЕРЕВІРКА ЗІТКНЕННЯ ПО ХІТБОКСАХ --
+        const pBox = {
+            x: player.x + player.hitbox.offsetX,
+            y: player.y + player.hitbox.offsetY,
+            w: player.hitbox.w,
+            h: player.hitbox.h
+        };
+        const oBox = {
+            x: o.x + o.hitbox.ox,
+            y: o.y + o.hitbox.oy,
+            w: o.hitbox.w,
+            h: o.hitbox.h
+        };
+
+        // Дебаг-режим: малюємо хітбокси, щоб бачити, як гра рахує зіткнення
+        if (DEBUG_MODE) {
+            ctx.strokeStyle = 'lime';
+            ctx.strokeRect(pBox.x, pBox.y, pBox.w, pBox.h); // Хітбокс гравця
+            ctx.strokeStyle = 'red';
+            ctx.strokeRect(oBox.x, oBox.y, oBox.w, oBox.h); // Хітбокс перешкоди
+        }
+
+        // Логіка перетину двох прямокутників (AABB Collision)
+        if (pBox.x < oBox.x + oBox.w && 
+            pBox.x + pBox.w > oBox.x &&
+            pBox.y < oBox.y + oBox.h && 
+            pBox.y + pBox.h > oBox.y) {
             isGameOver = true;
         }
 
         if (o.x < -150) obstacles.splice(i, 1);
     }
 
+    // Рахунок та поступове ускладнення
     score++;
-    gameSpeed = 6 + Math.floor(score/1000);
+    gameSpeed = 7 + (score / 1500); // Збільшуємо швидкість повільніше, але база вища
     
     ctx.fillStyle = '#2c3e50';
-    ctx.font = 'bold 20px Arial';
+    ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'left';
     ctx.fillText(`Дистанція: ${Math.floor(score/10)}м`, 20, 40);
     
+    frames++;
     requestAnimationFrame(gameLoop);
 }
+
+// Стартуємо!
+initGame();
