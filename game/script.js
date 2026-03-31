@@ -1,232 +1,284 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-canvas.width = 800;
-canvas.height = 400;
-
-// --- НАЛАШТУВАННЯ ---
-const DEBUG_MODE = false; // Зміни на true, щоб побачити зелені/червоні "хітбокси" зіткнень!
-const PINK_BG = { r: 255, g: 0, b: 255 }; // Колір, який видаляємо
-
-const waiterSrc = 'https://raw.githubusercontent.com/Al1ennn/123/main/game/waiter_sprites.png';
-const obstacleSrc = 'https://raw.githubusercontent.com/Al1ennn/123/main/game/obstacles.png';
-
-let sprites = { waiter: null, obstacles: null };
-
-// --- 1. СИСТЕМА ВИДАЛЕННЯ ФОНУ ---
-async function loadAndCleanImage(url) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous"; // Важливо для роботи з пікселями через GitHub
-        img.src = url;
-        img.onload = () => {
-            const tempCanvas = document.createElement('canvas');
-            const tCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = img.width;
-            tempCanvas.height = img.height;
-            tCtx.drawImage(img, 0, 0);
-            
-            const imgData = tCtx.getImageData(0, 0, img.width, img.height);
-            const data = imgData.data;
-            
-            for (let i = 0; i < data.length; i += 4) {
-                // Якщо піксель дуже близький до яскраво-рожевого - робимо прозорим
-                if (data[i] > 240 && data[i+1] < 20 && data[i+2] > 240) {
-                    data[i + 3] = 0; // Альфа-канал = 0
-                }
-            }
-            tCtx.putImageData(imgData, 0, 0);
-            resolve(tempCanvas); // Повертаємо canvas замість картинки, він малюється так само швидко
-        };
-    });
-}
-
-// Ініціалізація гри
-async function initGame() {
-    sprites.waiter = await loadAndCleanImage(waiterSrc);
-    sprites.obstacles = await loadAndCleanImage(obstacleSrc);
-    requestAnimationFrame(gameLoop);
-}
-
-// --- 2. ОБ'ЄКТИ ГРИ ---
-let score = 0;
-let gameSpeed = 7;
-let isGameOver = false;
-let frames = 0;
-
-const player = {
-    x: 80,
-    y: 240,
-    w: 100, // Розмір малювання
-    h: 100,
-    // Хітбокс: зміщення відносно координат x, y. Це реальний розмір тіла для зіткнень.
-    hitbox: { offsetX: 35, offsetY: 20, w: 40, h: 75 },
-    
-    frameX: 0,
-    frameY: 0,
-    jumpV: 0,
-    gravity: 1.2,    // Сильніша гравітація - швидше падає
-    jumpPower: -18,  // Сильніший початковий ривок
-    isGrounded: true,
-    spaceHeld: false // Для адаптивного стрибка
+// --- КОНФІГУРАЦІЯ ---
+const CONFIG = {
+    canvasWidth: 800,
+    canvasHeight: 400,
+    floorY: 340,
+    gravity: 0.003,      // Гравітація тепер залежить від часу
+    gameSpeedBase: 0.4,  // Базова швидкість світу
+    debugHitboxes: false // Зміни на true, щоб бачити зони зіткнень!
 };
 
-const obstacles = [];
-let lastObstacleX = 0; // Зберігаємо позицію останньої перешкоди
+// --- АСЕТИ (Завантаження та очищення фону) ---
+const Assets = {
+    waiterSrc: 'https://raw.githubusercontent.com/Al1ennn/123/main/game/waiter_sprites.png',
+    obstacleSrc: 'https://raw.githubusercontent.com/Al1ennn/123/main/game/obstacles.png',
+    sprites: {},
 
-// --- 3. КЕРУВАННЯ ---
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
-        if (isGameOver) {
-            location.reload();
-            return;
+    async loadAndClean(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = url;
+            img.onload = () => {
+                const cvs = document.createElement('canvas');
+                const ctx = cvs.getContext('2d', { willReadFrequently: true });
+                cvs.width = img.width; cvs.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const imgData = ctx.getImageData(0, 0, img.width, img.height);
+                const data = imgData.data;
+                // Агресивне видалення рожевого фону
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] > 220 && data[i+1] < 50 && data[i+2] > 220) data[i + 3] = 0;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                resolve(cvs);
+            };
+        });
+    },
+
+    async init() {
+        this.sprites.waiter = await this.loadAndClean(this.waiterSrc);
+        this.sprites.obstacles = await this.loadAndClean(this.obstacleSrc);
+        document.getElementById('loadingScreen').classList.add('hidden');
+    }
+};
+
+// --- КЛАС ГРАВЦЯ ---
+class Player {
+    constructor(game) {
+        this.game = game;
+        this.w = 100;
+        this.h = 100;
+        this.x = 80;
+        this.y = CONFIG.floorY - this.h;
+        
+        // Внутрішній хітбокс для точних зіткнень
+        this.hitbox = { ox: 35, oy: 20, w: 40, h: 75 };
+        
+        this.vy = 0; // Швидкість по вертикалі
+        this.jumpPower = -1.1; // Сила стрибка (адаптована під deltaTime)
+        this.isGrounded = true;
+
+        // Анімація
+        this.frameX = 0;
+        this.frameY = 0;
+        this.frameTimer = 0;
+        this.frameInterval = 80; // Мілісекунди між кадрами
+    }
+
+    update(deltaTime, input) {
+        // Логіка стрибка
+        if (input.includes('Space') && this.isGrounded) {
+            this.vy = this.jumpPower;
+            this.isGrounded = false;
         }
-        player.spaceHeld = true;
-        if (player.isGrounded) {
-            player.jumpV = player.jumpPower;
-            player.isGrounded = false;
+
+        // Адаптивний стрибок (якщо відпустив пробіл зарано - падаєш швидше)
+        if (!input.includes('Space') && this.vy < -0.5) {
+            this.vy *= 0.8; 
+        }
+
+        // Застосування гравітації
+        this.vy += CONFIG.gravity * deltaTime;
+        this.y += this.vy * deltaTime;
+
+        // Перевірка землі
+        if (this.y >= CONFIG.floorY - this.h) {
+            this.y = CONFIG.floorY - this.h;
+            this.vy = 0;
+            this.isGrounded = true;
+        }
+
+        // Анімація спрайту
+        if (this.isGrounded) {
+            this.frameY = 0; // Біг
+            if (this.frameTimer > this.frameInterval) {
+                this.frameX = (this.frameX + 1) % 5;
+                this.frameTimer = 0;
+            } else {
+                this.frameTimer += deltaTime;
+            }
+        } else {
+            this.frameY = 2; // Стрибок
+            this.frameX = 0;
         }
     }
-});
 
-window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space') {
-        player.spaceHeld = false;
-        // Якщо відпустили пробіл раніше - стрибок стає коротшим (зрізаємо швидкість)
-        if (player.jumpV < -6) {
-            player.jumpV = -6; 
-        }
-    }
-});
+    draw(ctx) {
+        ctx.drawImage(Assets.sprites.waiter, 
+            this.frameX * 171, this.frameY * 175, 171, 175, 
+            this.x, this.y, this.w, this.h
+        );
 
-// --- 4. ЛОГІКА ПЕРЕШКОД ---
-function spawnObstacle() {
-    // Мінімальна відстань між перешкодами, щоб можна було приземлитися
-    const minDistance = 400 + (Math.random() * 200); 
-    
-    if (canvas.width - lastObstacleX < minDistance) return;
-
-    const types = [
-        // Координати з твого спрайту (sx, sy, sw, sh) + розміри в грі (w, h) + їхні хітбокси
-        { sx: 20, sy: 550, sw: 130, sh: 70, w: 90, h: 50, hitbox: {ox: 10, oy: 25, w: 70, h: 25} }, // Калюжа
-        { sx: 880, sy: 310, sw: 100, sh: 130, w: 60, h: 80, hitbox: {ox: 15, oy: 10, w: 30, h: 70} }, // Знак
-        { sx: 440, sy: 770, sw: 130, sh: 100, w: 80, h: 65, hitbox: {ox: 10, oy: 15, w: 60, h: 50} }  // Коробки
-    ];
-    
-    const t = types[Math.floor(Math.random() * types.length)];
-    obstacles.push({
-        x: canvas.width,
-        y: 340 - t.h,
-        ...t
-    });
-}
-
-// --- 5. ІГРОВИЙ ЦИКЛ ---
-function gameLoop() {
-    if (isGameOver) {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0,0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 40px Arial';
-        ctx.fillText('АВАРІЯ!', canvas.width/2, 170);
-        ctx.font = '20px Arial';
-        ctx.fillText(`Доставлено на: ${Math.floor(score/10)} метрів`, canvas.width/2, 220);
-        ctx.fillText('Натисніть ПРОБІЛ для рестарту', canvas.width/2, 260);
-        return;
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Малюємо підлогу
-    ctx.fillStyle = '#95a5a6';
-    ctx.fillRect(0, 340, canvas.width, 60);
-    ctx.strokeStyle = '#7f8c8d';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(0, 340, canvas.width, 3);
-
-    // --- ФІЗИКА ГРАВЦЯ ---
-    player.jumpV += player.gravity; // Гравітація тягне вниз постійно
-    player.y += player.jumpV;
-
-    if (player.y >= 240) { // Торкання землі
-        player.y = 240;
-        player.isGrounded = true;
-        player.jumpV = 0;
-        player.frameY = 0; // Анімація їзди
-        if (frames % 6 === 0) player.frameX = (player.frameX + 1) % 5;
-    } else {
-        player.frameY = 2; // Анімація стрибка
-        player.frameX = 0; // Зафіксувати один кадр у повітрі
-    }
-
-    // Малювання гравця
-    ctx.drawImage(sprites.waiter, 
-        player.frameX * 171, player.frameY * 175, 171, 175, 
-        player.x, player.y, player.w, player.h
-    );
-
-    // --- ПЕРЕШКОДИ ТА КОЛІЗІЇ ---
-    if (frames % 60 === 0 && Math.random() < 0.6) spawnObstacle();
-
-    // Оновлюємо позицію останньої перешкоди (для логіки спавну)
-    if (obstacles.length > 0) {
-        lastObstacleX = obstacles[obstacles.length - 1].x;
-    } else {
-        lastObstacleX = 0;
-    }
-
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        let o = obstacles[i];
-        o.x -= gameSpeed;
-
-        ctx.drawImage(sprites.obstacles, o.sx, o.sy, o.sw, o.sh, o.x, o.y, o.w, o.h);
-
-        // -- ПЕРЕВІРКА ЗІТКНЕННЯ ПО ХІТБОКСАХ --
-        const pBox = {
-            x: player.x + player.hitbox.offsetX,
-            y: player.y + player.hitbox.offsetY,
-            w: player.hitbox.w,
-            h: player.hitbox.h
-        };
-        const oBox = {
-            x: o.x + o.hitbox.ox,
-            y: o.y + o.hitbox.oy,
-            w: o.hitbox.w,
-            h: o.hitbox.h
-        };
-
-        // Дебаг-режим: малюємо хітбокси, щоб бачити, як гра рахує зіткнення
-        if (DEBUG_MODE) {
+        if (CONFIG.debugHitboxes) {
             ctx.strokeStyle = 'lime';
-            ctx.strokeRect(pBox.x, pBox.y, pBox.w, pBox.h); // Хітбокс гравця
-            ctx.strokeStyle = 'red';
-            ctx.strokeRect(oBox.x, oBox.y, oBox.w, oBox.h); // Хітбокс перешкоди
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.x + this.hitbox.ox, this.y + this.hitbox.oy, this.hitbox.w, this.hitbox.h);
         }
-
-        // Логіка перетину двох прямокутників (AABB Collision)
-        if (pBox.x < oBox.x + oBox.w && 
-            pBox.x + pBox.w > oBox.x &&
-            pBox.y < oBox.y + oBox.h && 
-            pBox.y + pBox.h > oBox.y) {
-            isGameOver = true;
-        }
-
-        if (o.x < -150) obstacles.splice(i, 1);
     }
-
-    // Рахунок та поступове ускладнення
-    score++;
-    gameSpeed = 7 + (score / 1500); // Збільшуємо швидкість повільніше, але база вища
-    
-    ctx.fillStyle = '#2c3e50';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Дистанція: ${Math.floor(score/10)}м`, 20, 40);
-    
-    frames++;
-    requestAnimationFrame(gameLoop);
 }
 
-// Стартуємо!
-initGame();
+// --- КЛАС ПЕРЕШКОД ---
+class Obstacle {
+    constructor(game) {
+        this.game = game;
+        
+        // Випадковий вибір перешкоди
+        const types = [
+            { sx: 20, sy: 550, sw: 130, sh: 70, w: 90, h: 50, hb: {ox: 10, oy: 25, w: 70, h: 25} }, // Калюжа
+            { sx: 880, sy: 310, sw: 100, sh: 130, w: 60, h: 80, hb: {ox: 15, oy: 10, w: 30, h: 70} }, // Знак
+            { sx: 440, sy: 770, sw: 130, sh: 100, w: 80, h: 65, hb: {ox: 10, oy: 15, w: 60, h: 50} }  // Коробки
+        ];
+        this.type = types[Math.floor(Math.random() * types.length)];
+        
+        this.x = CONFIG.canvasWidth;
+        this.y = CONFIG.floorY - this.type.h;
+        this.markedForDeletion = false;
+    }
+
+    update(deltaTime) {
+        this.x -= this.game.speed * deltaTime;
+        if (this.x < -100) this.markedForDeletion = true;
+    }
+
+    draw(ctx) {
+        ctx.drawImage(Assets.sprites.obstacles, 
+            this.type.sx, this.type.sy, this.type.sw, this.type.sh, 
+            this.x, this.y, this.type.w, this.type.h
+        );
+
+        if (CONFIG.debugHitboxes) {
+            ctx.strokeStyle = 'red';
+            ctx.strokeRect(this.x + this.type.hb.ox, this.y + this.type.hb.oy, this.type.hb.w, this.type.hb.h);
+        }
+    }
+}
+
+// --- ГОЛОВНИЙ КЛАС ГРИ ---
+class Game {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.player = new Player(this);
+        this.input = [];
+        this.obstacles = [];
+        this.obstacleTimer = 0;
+        this.obstacleInterval = 1200; // Час між перешкодами в мс
+        
+        this.score = 0;
+        this.speed = CONFIG.gameSpeedBase;
+        this.gameOver = false;
+
+        // Обробка клавіатури
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space' && this.input.indexOf('Space') === -1) {
+                this.input.push('Space');
+            }
+        });
+        window.addEventListener('keyup', e => {
+            if (e.code === 'Space') {
+                this.input.splice(this.input.indexOf('Space'), 1);
+            }
+        });
+
+        // Кнопка рестарту
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            this.restart();
+        });
+    }
+
+    update(deltaTime) {
+        if (this.gameOver) return;
+
+        this.player.update(deltaTime, this.input);
+
+        // Генерація перешкод
+        if (this.obstacleTimer > this.obstacleInterval) {
+            this.obstacles.push(new Obstacle(this));
+            this.obstacleTimer = 0;
+            // Рандомізуємо інтервал для різноманітності
+            this.obstacleInterval = Math.random() * 800 + 800;
+        } else {
+            this.obstacleTimer += deltaTime;
+        }
+
+        // Оновлення перешкод та колізія
+        this.obstacles.forEach(obs => {
+            obs.update(deltaTime);
+            
+            // AABB Колізія по хітбоксах
+            const p = this.player;
+            if (p.x + p.hitbox.ox < obs.x + obs.type.hb.ox + obs.type.hb.w &&
+                p.x + p.hitbox.ox + p.hitbox.w > obs.x + obs.type.hb.ox &&
+                p.y + p.hitbox.oy < obs.y + obs.type.hb.oy + obs.type.hb.h &&
+                p.y + p.hitbox.oy + p.hitbox.h > obs.y + obs.type.hb.oy) {
+                this.triggerGameOver();
+            }
+        });
+
+        // Видалення старих перешкод
+        this.obstacles = this.obstacles.filter(obs => !obs.markedForDeletion);
+
+        // Збільшення складності
+        this.score += deltaTime * 0.01;
+        this.speed = CONFIG.gameSpeedBase + (this.score * 0.0005);
+        document.getElementById('scoreValue').innerText = Math.floor(this.score);
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Малюємо підлогу
+        this.ctx.fillStyle = '#7f8c8d';
+        this.ctx.fillRect(0, CONFIG.floorY, this.canvas.width, this.canvas.height - CONFIG.floorY);
+        this.ctx.strokeStyle = '#2c3e50';
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, CONFIG.floorY);
+        this.ctx.lineTo(this.canvas.width, CONFIG.floorY);
+        this.ctx.stroke();
+
+        this.player.draw(this.ctx);
+        this.obstacles.forEach(obs => obs.draw(this.ctx));
+    }
+
+    triggerGameOver() {
+        this.gameOver = true;
+        document.getElementById('finalScore').innerText = Math.floor(this.score);
+        document.getElementById('gameOverScreen').classList.remove('hidden');
+    }
+
+    restart() {
+        this.player = new Player(this);
+        this.obstacles = [];
+        this.score = 0;
+        this.speed = CONFIG.gameSpeedBase;
+        this.gameOver = false;
+        document.getElementById('gameOverScreen').classList.add('hidden');
+    }
+}
+
+// --- ІНІЦІАЛІЗАЦІЯ ТА ЦИКЛ ---
+window.addEventListener('load', async () => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = CONFIG.canvasWidth;
+    canvas.height = CONFIG.canvasHeight;
+
+    await Assets.init(); // Чекаємо, поки очистяться картинки
+
+    const game = new Game(canvas, ctx);
+    let lastTime = 0;
+
+    function animate(timeStamp) {
+        const deltaTime = timeStamp - lastTime;
+        lastTime = timeStamp;
+
+        game.update(deltaTime);
+        game.draw();
+
+        requestAnimationFrame(animate);
+    }
+    animate(0);
+});
