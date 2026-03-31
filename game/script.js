@@ -9,18 +9,18 @@ canvas.height = 400;
 // Переконайся, що файли на GitHub називаються ТОЧНО ТАК САМО!
 // ==========================================
 const ASSET_URLS = {
-    run: [
-        'waiter_run_0.png', 'waiter_run_1.png', 'waiter_run_2.png',
-        'waiter_run_3.png', 'waiter_run_4.png', 'waiter_run_5.png', 'waiter_run_6.png'
+   run: [
+        'waiter_run_0.jpg', 'waiter_run_1.jpg', 'waiter_run_2.jpg',
+        'waiter_run_3.jpg', 'waiter_run_4.jpg', 'waiter_run_5.jpg', 'waiter_run_6.jpg'
     ],
     jump: [
-        'waiter_jump_0.png', 'waiter_jump_1.png', 'waiter_jump_2.png',
-        'waiter_jump_3.png', 'waiter_jump_4.png', 'waiter_jump_5.png'
+        'waiter_jump_0.jpg', 'waiter_jump_1.jpg', 'waiter_jump_2.jpg',
+        'waiter_jump_3.jpg', 'waiter_jump_4.jpg', 'waiter_jump_5.jpg'
     ],
     obstacles: {
-        low: 'puddle.png', 
+        low: 'puddle.png',  // Перевір, чи ці файли теж не .jpg!
         high: 'sign.png',  
-        wall: 'boxes.png'  
+        wall: 'boxes.png'
     }
 };
 
