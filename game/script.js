@@ -5,72 +5,36 @@ canvas.width = 800;
 canvas.height = 400;
 
 // ==========================================
-// 1. НАЛАШТУВАННЯ ТА ПОСИЛАННЯ НА КАРТИНКИ
+// 1. АСЕТИ (НАЗВИ ФАЙЛІВ)
+// Переконайся, що файли на GitHub називаються ТОЧНО ТАК САМО!
 // ==========================================
-
-// ВСТАВ СЮДИ СВОЇ ПОСИЛАННЯ З GITHUB!
 const ASSET_URLS = {
-    // 7 кадрів бігу
     run: [
-        'ПОСИЛАННЯ_НА_RUN_0.png', 
-        'ПОСИЛАННЯ_НА_RUN_1.png',
-        'ПОСИЛАННЯ_НА_RUN_2.png',
-        'ПОСИЛАННЯ_НА_RUN_3.png',
-        'ПОСИЛАННЯ_НА_RUN_4.png',
-        'ПОСИЛАННЯ_НА_RUN_5.png',
-        'ПОСИЛАННЯ_НА_RUN_6.png'
+        'waiter_run_0.png', 'waiter_run_1.png', 'waiter_run_2.png',
+        'waiter_run_3.png', 'waiter_run_4.png', 'waiter_run_5.png', 'waiter_run_6.png'
     ],
-    // 6 кадрів стрибка
     jump: [
-        'ПОСИЛАННЯ_НА_JUMP_0.png',
-        'ПОСИЛАННЯ_НА_JUMP_1.png',
-        'ПОСИЛАННЯ_НА_JUMP_2.png',
-        'ПОСИЛАННЯ_НА_JUMP_3.png',
-        'ПОСИЛАННЯ_НА_JUMP_4.png',
-        'ПОСИЛАННЯ_НА_JUMP_5.png'
+        'waiter_jump_0.png', 'waiter_jump_1.png', 'waiter_jump_2.png',
+        'waiter_jump_3.png', 'waiter_jump_4.png', 'waiter_jump_5.png'
     ],
-    // Перешкоди (якщо є картинки, встав посилання. Якщо немає - залиш порожнім або старими)
     obstacles: {
-        low: 'puddle.png', // Калюжа
-        high: 'sign.png',  // Знак
-        wall: 'boxes.png'  // Коробки
+        low: 'puddle.png', 
+        high: 'sign.png',  
+        wall: 'boxes.png'  
     }
 };
 
-const WHITE_THRESHOLD = 235; // Налаштування видалення фону (255 - ідеально білий)
-
 // ==========================================
-// 2. СИСТЕМА ЗАВАНТАЖЕННЯ ТА ОЧИЩЕННЯ (ХРОМАКЕЙ)
+// 2. ЗАВАНТАЖУВАЧ КАРТИНОК
 // ==========================================
-
-async function loadAndCleanImage(url) {
-    return new Promise((resolve, reject) => {
+async function loadImage(url) {
+    return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = "Anonymous";
         img.src = url;
-        
-        img.onload = () => {
-            const tempCanvas = document.createElement('canvas');
-            const tCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-            tempCanvas.width = img.width;
-            tempCanvas.height = img.height;
-            tCtx.drawImage(img, 0, 0);
-            
-            const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imgData.data;
-            
-            // Видаляємо білий фон
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i] > WHITE_THRESHOLD && data[i+1] > WHITE_THRESHOLD && data[i+2] > WHITE_THRESHOLD) {
-                    data[i + 3] = 0; // Прозорість
-                }
-            }
-            tCtx.putImageData(imgData, 0, 0);
-            resolve(tempCanvas);
-        };
+        img.onload = () => resolve(img);
         img.onerror = () => {
-            console.warn(`Не вдалося завантажити картинку: ${url}`);
-            resolve(null); // Якщо помилка, повертаємо null, щоб гра не впала
+            console.error(`Помилка! Не знайдено: ${url}`);
+            resolve(null); // Повертаємо null, щоб гра не крашнулась, якщо файлу немає
         };
     });
 }
@@ -81,30 +45,25 @@ const Assets = {
     obstacles: {},
 
     async init() {
-        // Показуємо екран завантаження
-        console.log("Завантаження та очищення картинок...");
-        
+        console.log("Завантаження картинок...");
         for (let url of ASSET_URLS.run) {
-            const img = await loadAndCleanImage(url);
+            const img = await loadImage(url);
             if (img) this.run.push(img);
         }
         for (let url of ASSET_URLS.jump) {
-            const img = await loadAndCleanImage(url);
+            const img = await loadImage(url);
             if (img) this.jump.push(img);
         }
-        
-        this.obstacles.low = await loadAndCleanImage(ASSET_URLS.obstacles.low);
-        this.obstacles.high = await loadAndCleanImage(ASSET_URLS.obstacles.high);
-        this.obstacles.wall = await loadAndCleanImage(ASSET_URLS.obstacles.wall);
-        
+        this.obstacles.low = await loadImage(ASSET_URLS.obstacles.low);
+        this.obstacles.high = await loadImage(ASSET_URLS.obstacles.high);
+        this.obstacles.wall = await loadImage(ASSET_URLS.obstacles.wall);
         console.log("Всі картинки готові!");
     }
 };
 
 // ==========================================
-// 3. НАЛАШТУВАННЯ 3D СВІТУ ТА СТАНУ
+// 3. НАЛАШТУВАННЯ 3D СВІТУ
 // ==========================================
-
 const FOV = 250; 
 const CAMERA_Y = -120; 
 const HORIZON_Y = canvas.height / 2; 
@@ -119,12 +78,11 @@ let isPaused = false;
 let obstaclesArray = [];
 
 // ==========================================
-// 4. ОБ'ЄКТ ГРАВЦЯ З АНІМАЦІЄЮ
+// 4. ГРАВЕЦЬ (ФІЗИКА ТА АНІМАЦІЯ)
 // ==========================================
-
 const player = {
-    lane: 0,           
-    visualLane: 0,     
+    lane: 0,           // -1 (ліва), 0 (центр), 1 (права)
+    visualLane: 0,     // Плавний перехід між смугами
     y: 0,              
     vy: 0,             
     gravity: 1.8,
@@ -138,11 +96,11 @@ const player = {
     isRolling: false,
     rollTimer: 0,
 
-    // Система анімації
-    animState: 'run', // 'run' або 'jump'
+    // Анімація
+    animState: 'run',
     frameIndex: 0,
     animTimer: 0,
-    animSpeed: 4, // Зміна кадру кожні 4 тіки (швидкість бігу)
+    animSpeed: 5, // Швидкість зміни кадрів (менше = швидше)
 
     update() {
         // Фізика стрибка
@@ -153,14 +111,14 @@ const player = {
                 this.y = 0;
                 this.vy = 0;
                 this.isGrounded = true;
-                this.animState = 'run'; // Повернулась на землю
+                this.animState = 'run';
                 this.frameIndex = 0;
             } else {
                 this.animState = 'jump';
             }
         }
 
-        // Логіка перекату (присідання)
+        // Логіка присідання (перекату)
         if (this.isRolling) {
             this.rollTimer--;
             if (this.rollTimer <= 0) {
@@ -169,13 +127,12 @@ const player = {
             }
         }
 
-        // Анімація (перемикання кадрів)
+        // Перемикання кадрів анімації
         this.animTimer++;
         if (this.animTimer >= this.animSpeed) {
             this.animTimer = 0;
             const currentArray = Assets[this.animState];
             if (currentArray && currentArray.length > 0) {
-                // Зациклення анімації
                 this.frameIndex = (this.frameIndex + 1) % currentArray.length;
             }
         }
@@ -183,17 +140,16 @@ const player = {
 
     draw(proj) {
         const drawW = this.baseWidth * proj.scale;
-        const drawH = this.currentHeight * proj.scale; // Змінюється при присіданні
+        const drawH = this.currentHeight * proj.scale; 
         const drawX = proj.x - drawW / 2;
         const drawY = proj.y - drawH;
 
         const currentArray = Assets[this.animState];
         if (currentArray && currentArray.length > 0) {
-            // Малюємо поточний кадр з масиву
             const currentImg = currentArray[this.frameIndex];
             ctx.drawImage(currentImg, drawX, drawY, drawW, drawH);
         } else {
-            // Заглушка, якщо картинки ще не завантажились
+            // Синій квадрат, якщо картинки ще не завантажились
             ctx.fillStyle = '#3498db';
             ctx.fillRect(drawX, drawY, drawW, drawH);
         }
@@ -203,7 +159,6 @@ const player = {
 // ==========================================
 // 5. КЕРУВАННЯ
 // ==========================================
-
 window.addEventListener('keydown', (e) => {
     if (isGameOver && e.code === 'Enter') {
         resetGame();
@@ -215,7 +170,6 @@ window.addEventListener('keydown', (e) => {
     }
     if (isPaused || isGameOver) return;
 
-    // Зміна смуги
     if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > -1) player.lane--;
     if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 1) player.lane++;
 
@@ -223,21 +177,20 @@ window.addEventListener('keydown', (e) => {
     if ((e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') && player.isGrounded && !player.isRolling) {
         player.vy = player.jumpPower;
         player.isGrounded = false;
-        player.frameIndex = 0; // Скидаємо анімацію стрибка на перший кадр
+        player.frameIndex = 0; // Починаємо анімацію стрибка з початку
     }
 
-    // Перекат (Присідання)
+    // Присідання
     if ((e.code === 'ArrowDown' || e.code === 'KeyS') && player.isGrounded && !player.isRolling) {
         player.isRolling = true;
-        player.currentHeight = 60; // Стискаємо гравця візуально
+        player.currentHeight = 60; // Робимо хітбокс нижчим
         player.rollTimer = 35; 
     }
 });
 
 // ==========================================
-// 6. ЛОГІКА СВІТУ ТА ПЕРЕШКОД
+// 6. МАТЕМАТИКА 3D ТА ПЕРЕШКОДИ
 // ==========================================
-
 function project(x, y, z) {
     if (z <= 0) return null; 
     const scale = FOV / z;
@@ -282,9 +235,8 @@ function resetGame() {
 }
 
 // ==========================================
-// 7. ГОЛОВНИЙ ЦИКЛ ГРИ
+// 7. ГОЛОВНИЙ ІГРОВИЙ ЦИКЛ
 // ==========================================
-
 function updateAndDraw() {
     if (isGameOver || isPaused) {
         if (isGameOver) drawGameOver();
@@ -295,12 +247,11 @@ function updateAndDraw() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Логіка швидкості та рахунку
     speedMultiplier += 0.0003;
     const currentSpeed = baseSpeed * speedMultiplier;
     score += currentSpeed * 0.01;
 
-    // Оновлення гравця
+    // Рух гравця
     player.visualLane += (player.lane - player.visualLane) * 0.2;
     player.update();
 
@@ -311,9 +262,9 @@ function updateAndDraw() {
         }
     }
 
-    // --- МАЛЮВАННЯ ФОНУ ТА СМУГ ---
-    ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, HORIZON_Y); // Небо
-    ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y); // Підлога
+    // --- МАЛЮВАННЯ СВІТУ ---
+    ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, HORIZON_Y); 
+    ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y); 
 
     ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2;
     for (let i = -1.5; i <= 1.5; i += 1) {
@@ -324,7 +275,7 @@ function updateAndDraw() {
         }
     }
 
-    // --- МАЛЮВАННЯ ПЕРЕШКОД ТА КОЛІЗІЯ ---
+    // --- МАЛЮВАННЯ ПЕРЕШКОД ---
     obstaclesArray.sort((a, b) => b.z - a.z);
 
     for (let i = obstaclesArray.length - 1; i >= 0; i--) {
@@ -339,7 +290,6 @@ function updateAndDraw() {
             const drawX = proj.x - drawW / 2;
             const drawY = proj.y - drawH; 
 
-            // Якщо картинка є - малюємо її, якщо ні - кольоровий блок
             if (obs.img) {
                 ctx.drawImage(obs.img, drawX, drawY, drawW, drawH);
             } else {
@@ -347,13 +297,12 @@ function updateAndDraw() {
                 ctx.fillRect(drawX, drawY, drawW, drawH);
             }
 
-            // Малюємо ніжку для високого знаку
             if (obs.type === 'high') {
                  ctx.fillStyle = '#2c3e50';
                  ctx.fillRect(proj.x - 2, proj.y, 4, -obs.y * proj.scale); 
             }
 
-            // Колізія (тільки коли об'єкт близько до гравця)
+            // Колізія у 3D просторі
             if (obs.z < PLAYER_Z + 20 && obs.z > PLAYER_Z - 40) {
                 if (Math.abs(player.visualLane - obs.lane) < 0.6) {
                     if (obs.type === 'low' && player.y > -obs.h) isGameOver = true;
@@ -371,7 +320,7 @@ function updateAndDraw() {
         player.draw(pProj);
     }
 
-    // --- UI ---
+    // --- UI (Інтерфейс) ---
     ctx.fillStyle = 'white'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left';
     ctx.fillText(`Рахунок: ${Math.floor(score)}`, 20, 40);
 
@@ -397,8 +346,6 @@ function drawPause() {
 // ==========================================
 // 8. СТАРТ ГРИ
 // ==========================================
-
-// Спочатку завантажуємо і чистимо всі картинки, потім запускаємо цикл
 Assets.init().then(() => {
     resetGame();
     updateAndDraw();
