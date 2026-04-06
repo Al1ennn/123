@@ -124,7 +124,7 @@ const player = {
     animState: 'run', // 'run' або 'jump'
     frameIndex: 0,
     animTimer: 0,
-    animSpeed: 6, // ЗБІЛЬШЕНО ЧИСЛО ДЛЯ ПОВІЛЬНІШОЇ АНІМАЦІЇ НІГ (було 4)
+    animSpeed: 12, // ЗБІЛЬШЕНО ЧИСЛО ДЛЯ ПОВІЛЬНІШОЇ АНІМАЦІЇ НІГ (було 4)
 
     update() {
         // Фізика стрибка
