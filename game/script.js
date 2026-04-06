@@ -94,7 +94,8 @@ const Z_LIMIT = 2000;
 const PLAYER_Z = 150; 
 
 let score = 0;
-let baseSpeed = 15; 
+// ЗМЕНШЕНО ШВИДКІСТЬ ДЛЯ КОМФОРТУ
+let baseSpeed = 10; // Було 15
 let speedMultiplier = 1;
 let isGameOver = false;
 let isPaused = false;
@@ -111,7 +112,7 @@ const player = {
     gravity: 1.8,
     jumpPower: -22,
     
-    baseWidth: 70,  // Зменшено, щоб краще вміщався в смугу
+    baseWidth: 70,  
     baseHeight: 90, 
     currentHeight: 90, 
     
@@ -123,7 +124,7 @@ const player = {
     animState: 'run', // 'run' або 'jump'
     frameIndex: 0,
     animTimer: 0,
-    animSpeed: 4, // Швидкість анімації (кожні 4 кадри гри)
+    animSpeed: 6, // ЗБІЛЬШЕНО ЧИСЛО ДЛЯ ПОВІЛЬНІШОЇ АНІМАЦІЇ НІГ (було 4)
 
     update() {
         // Фізика стрибка
@@ -285,12 +286,13 @@ function updateAndDraw() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    speedMultiplier += 0.0003;
+    // ЗМЕНШЕНО ПРИСКОРЕННЯ З ЧАСОМ (було 0.0003)
+    speedMultiplier += 0.00015;
     const currentSpeed = baseSpeed * speedMultiplier;
     score += currentSpeed * 0.01;
 
-    // Оновлення гравця
-    player.visualLane += (player.lane - player.visualLane) * 0.2; // Плавний рух вбік
+    // Оновлення гравця з ПЛАВНИМ ПЕРЕХОДОМ (було 0.2, стало 0.08)
+    player.visualLane += (player.lane - player.visualLane) * 0.08; 
     player.update();
 
     // Спавн перешкод
