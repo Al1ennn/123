@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Retro Cafe Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="score">Бали: 0</div>
+        <div id="conveyor"></div>
+        <div id="controls">
+            <p>Клікай на предмети, поки вони не зникли!</p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
