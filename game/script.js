@@ -1,237 +1,305 @@
 const canvas = document.getElementById('gameCanvas');
-// Якщо canvas не знайдено в HTML, створимо його програмно (для безпеки)
-if (!canvas) {
-    document.body.innerHTML = '<canvas id="gameCanvas" width="800" height="400" style="background-color: #2c3e50;"></canvas>';
-}
-const ctx = document.getElementById('gameCanvas').getContext('2d');
+const ctx = canvas.getContext('2d');
+
+canvas.width = 800;
+canvas.height = 400;
 
 // ==========================================
-// 1. НАЛАШТУВАННЯ СКЕЛЕТА ТА РОЗМІРІВ
+// 1. НАЛАШТУВАННЯ СКЕЛЕТА (Без картинок!)
 // ==========================================
-const CONFIG = {
-    x: 400,       // Позиція по X (по центру)
-    y: 220,       // ПІДНЯТО ВИЩЕ: Позиція таза по Y 
-    speed: 0.06,  // ЗМЕНШЕНО ШВИДКІСТЬ: Наскільки швидко він перебирає ногами (було 0.15)
-    
-    // Розміри кісток
-    skel: {
-        torso: { w: 34, h: 50 },
-        thigh: { w: 14, h: 28 }, // Стегно
-        calf:  { w: 12, h: 30 }, // Гомілка
-        arm:   { w: 10, h: 22 }, // Плече
-        forearm:{w: 10, h: 22 }  // Передпліччя
+const SKEL = {
+    torso: { w: 34, h: 50 },
+    thigh: { w: 14, h: 28 }, 
+    calf:  { w: 12, h: 30 }, 
+    arm:   { w: 10, h: 22 }, 
+    forearm:{w: 10, h: 22 }  
+};
+
+const COLORS = {
+    skin: '#f1c40f',     skinDark: '#e67e22', 
+    shirt: '#ecf0f1',    pants: '#2980b9',    pantsDark: '#2c3e50',
+    apron: '#bdc3c7',    skate: '#e74c3c',    
+    tray: '#95a5a6',     glass: '#f1c40f'     
+};
+
+// ==========================================
+// 2. СВІТ ТА ЗМІННІ ГРИ
+// ==========================================
+const FOV = 250, CAMERA_Y = -120, HORIZON_Y = 200, Z_LIMIT = 2000, PLAYER_Z = 150; 
+let score = 0, speedMultiplier = 1, isGameOver = false;
+let obstaclesArray = [];
+
+// ==========================================
+// 3. ФУНКЦІЇ МАЛЮВАННЯ ЧАСТИН ТІЛА
+// ==========================================
+function drawLeg(ctx, startX, startY, thighAngle, kneeAngle, isBackLeg) {
+    const colorThigh = isBackLeg ? COLORS.pantsDark : COLORS.pants;
+    const colorCalf = isBackLeg ? COLORS.skinDark : COLORS.skin;
+
+    ctx.save();
+    ctx.translate(startX, startY);
+
+    // Стегно
+    ctx.rotate(thighAngle * Math.PI / 180);
+    ctx.fillStyle = colorThigh;
+    ctx.fillRect(-SKEL.thigh.w / 2, 0, SKEL.thigh.w, SKEL.thigh.h);
+
+    // Гомілка
+    ctx.translate(0, SKEL.thigh.h);
+    ctx.rotate(kneeAngle * Math.PI / 180);
+    ctx.fillStyle = colorCalf;
+    ctx.fillRect(-SKEL.calf.w / 2, 0, SKEL.calf.w, SKEL.calf.h);
+
+    // Ролик
+    ctx.translate(0, SKEL.calf.h);
+    ctx.fillStyle = '#ecf0f1'; 
+    ctx.fillRect(-SKEL.calf.w, 0, SKEL.calf.w * 2, 15);
+    ctx.fillStyle = COLORS.skate;
+    ctx.fillRect(-SKEL.calf.w + 2, 15, SKEL.calf.w * 2 - 4, 6);
+
+    ctx.restore();
+}
+
+function drawArm(ctx, startX, startY, shoulderAngle, elbowAngle, isBackArm, holdingTray) {
+    const colorArm = isBackArm ? COLORS.skinDark : COLORS.skin;
+    const colorSleeve = isBackArm ? '#bdc3c7' : COLORS.shirt;
+
+    ctx.save();
+    ctx.translate(startX, startY);
+
+    // Плече
+    ctx.rotate(shoulderAngle * Math.PI / 180);
+    ctx.fillStyle = colorSleeve;
+    ctx.fillRect(-SKEL.arm.w / 2, 0, SKEL.arm.w, SKEL.arm.h - 5); 
+    ctx.fillStyle = colorArm;
+    ctx.fillRect(-SKEL.arm.w / 2, SKEL.arm.h - 5, SKEL.arm.w, 5); 
+
+    // Передпліччя
+    ctx.translate(0, SKEL.arm.h);
+    ctx.rotate(elbowAngle * Math.PI / 180);
+    ctx.fillStyle = colorArm;
+    ctx.fillRect(-SKEL.forearm.w / 2, 0, SKEL.forearm.w, SKEL.forearm.h);
+
+    // Таця
+    if (holdingTray) {
+        ctx.translate(0, SKEL.forearm.h); 
+        ctx.rotate(-(shoulderAngle + elbowAngle) * Math.PI / 180); // Тримаємо рівно!
+        
+        ctx.fillStyle = COLORS.tray;
+        ctx.beginPath(); ctx.ellipse(15, -5, 25, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.fillRect(5, -25, 15, 20); // Склянка
+        ctx.fillStyle = COLORS.glass; ctx.fillRect(7, -20, 11, 13); // Лимонад
+        
+        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(5, -25, 5, 0, Math.PI * 2); ctx.fill(); // Лимон
+    }
+
+    ctx.restore();
+}
+
+// ==========================================
+// 4. ОБ'ЄКТ ГРАВЦЯ
+// ==========================================
+const player = {
+    lane: 0, visualLane: 0, y: 0, vy: 0,
+    isGrounded: true, isRolling: false, rollTimer: 0, animTimer: 0,
+
+    update() {
+        // Гравітація
+        if (!this.isGrounded) {
+            this.vy += 1.5;
+            this.y += this.vy;
+            if (this.y >= 0) {
+                this.y = 0; this.vy = 0; this.isGrounded = true;
+            }
+        }
+
+        // Присідання
+        if (this.isRolling) {
+            this.rollTimer--;
+            if (this.rollTimer <= 0) this.isRolling = false;
+        }
+
+        // Плавний перехід по смугах
+        this.visualLane += (this.lane - this.visualLane) * 0.15;
+
+        // Анімація
+        if (this.isGrounded && !this.isRolling) {
+            this.animTimer += 0.15; // Швидкість перебирання ногами
+        }
     },
-    
-    // Кольори (щоб виглядало як офіціант)
-    colors: {
-        skin: '#f1c40f',     // Шкіра
-        skinDark: '#e67e22', // Шкіра (тінь для задніх кінцівок)
-        shirt: '#ecf0f1',    // Біла футболка
-        pants: '#2980b9',    // Сині шорти
-        pantsDark: '#2c3e50',// Сині шорти (тінь)
-        apron: '#bdc3c7',    // Фартух
-        skate: '#e74c3c',    // Червоні ролики
-        tray: '#95a5a6',     // Срібна таця
-        glass: '#f1c40f'     // Лимонад
+
+    draw(proj) {
+        ctx.save();
+        ctx.translate(proj.x, proj.y);
+        ctx.scale(proj.scale, proj.scale);
+
+        let torsoTilt = 5, rightThighAngle = 0, leftThighAngle = 0;
+        let rightKneeAngle = 0, leftKneeAngle = 0;
+        let backShoulderAngle = 0, backElbowAngle = -20;
+        let frontShoulderAngle = 10, frontElbowAngle = -80;
+
+        if (this.isGrounded) {
+            if (this.isRolling) {
+                // Поза присідання
+                torsoTilt = 35;
+                rightThighAngle = -60; leftThighAngle = -60;
+                rightKneeAngle = 120; leftKneeAngle = 120;
+                frontShoulderAngle = -30;
+            } else {
+                // Біг
+                const runCycle = Math.sin(this.animTimer);
+                rightThighAngle = runCycle * 35;
+                leftThighAngle = -runCycle * 35;
+                rightKneeAngle = Math.max(0, Math.sin(this.animTimer - Math.PI / 2) * 50);
+                leftKneeAngle = Math.max(0, Math.sin(this.animTimer + Math.PI / 2) * 50);
+                
+                backShoulderAngle = runCycle * 30;
+                frontShoulderAngle = 10 + Math.sin(this.animTimer * 2) * 5;
+                frontElbowAngle = -80 + Math.cos(this.animTimer * 2) * 5;
+            }
+        } else {
+            // Поза стрибка
+            torsoTilt = -5;
+            rightThighAngle = -30; leftThighAngle = 10;
+            rightKneeAngle = 60; leftKneeAngle = 10;
+            backShoulderAngle = -40; frontShoulderAngle = 20;
+        }
+
+        // МАЛЮЄМО ЗЗАДУ НАПЕРЕД (Глибина)
+        drawArm(ctx, -10, -SKEL.torso.h + 10, backShoulderAngle, backElbowAngle, true, false);
+        drawLeg(ctx, -8, 0, leftThighAngle, leftKneeAngle, true);
+        
+        // Тулуб
+        ctx.save();
+        ctx.rotate(torsoTilt * Math.PI / 180);
+        
+        ctx.fillStyle = COLORS.shirt; ctx.fillRect(-SKEL.torso.w / 2, -SKEL.torso.h, SKEL.torso.w, SKEL.torso.h);
+        ctx.fillStyle = COLORS.apron; ctx.fillRect(-SKEL.torso.w / 2 - 2, -SKEL.torso.h / 3, SKEL.torso.w + 4, SKEL.torso.h / 3 + 10);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(-SKEL.torso.w / 2 - 5, -SKEL.torso.h / 3, 10, 8); // Бантик
+        
+        ctx.fillStyle = COLORS.skin; ctx.fillRect(-6, -SKEL.torso.h - 8, 12, 10); // Шия
+        ctx.beginPath(); ctx.arc(0, -SKEL.torso.h - 18, 15, 0, Math.PI * 2); ctx.fill(); // Голова
+        ctx.fillStyle = '#5c3a21'; ctx.beginPath(); ctx.arc(0, -SKEL.torso.h - 18, 16, Math.PI, Math.PI * 2); ctx.fill(); // Волосся
+        
+        ctx.fillStyle = '#ecf0f1'; ctx.beginPath(); ctx.moveTo(-12, -SKEL.torso.h - 30); ctx.lineTo(12, -SKEL.torso.h - 30); ctx.lineTo(0, -SKEL.torso.h - 45); ctx.fill(); // Капелюх
+        ctx.fillStyle = COLORS.pants; ctx.fillRect(-10, -SKEL.torso.h - 32, 20, 4);
+        ctx.restore();
+
+        drawLeg(ctx, +8, 0, rightThighAngle, rightKneeAngle, false);
+        drawArm(ctx, +15, -SKEL.torso.h + 10, frontShoulderAngle, frontElbowAngle, false, true);
+
+        ctx.restore();
     }
 };
 
-let time = 0; // Внутрішній годинник для анімації
-
 // ==========================================
-// 2. БАЗОВА ФУНКЦІЯ СКЕЛЕТНОЇ АНІМАЦІЇ (Forward Kinematics)
+// 5. УПРАВЛІННЯ ТА ЛОГІКА
 // ==========================================
-function drawJoint(ctx, x, y, width, length, angleInDegrees, color) {
-    ctx.save();
-    ctx.translate(x, y); // Переносимо точку відліку в суглоб
-    ctx.rotate(angleInDegrees * Math.PI / 180); // Повертаємо
-    
-    ctx.fillStyle = color;
-    // Малюємо деталь (центруємо по ширині, малюємо вниз)
-    ctx.fillRect(-width / 2, 0, width, length);
-    ctx.restore();
-}
-
-// ==========================================
-// 3. МАЛЮВАННЯ ЧАСТИН ТІЛА
-// ==========================================
-
-// Малюємо ногу (Стегно -> Коліно -> Ролик)
-function drawLeg(startX, startY, thighAngle, kneeAngle, isBackLeg) {
-    const s = CONFIG.skel;
-    const c = CONFIG.colors;
-    const colorThigh = isBackLeg ? c.pantsDark : c.pants;
-    const colorCalf = isBackLeg ? c.skinDark : c.skin;
-
-    ctx.save();
-    ctx.translate(startX, startY);
-
-    // 1. СТЕГНО
-    ctx.rotate(thighAngle * Math.PI / 180);
-    ctx.fillStyle = colorThigh;
-    ctx.fillRect(-s.thigh.w / 2, 0, s.thigh.w, s.thigh.h);
-
-    // 2. ГОМІЛКА (відносно кінця стегна)
-    ctx.translate(0, s.thigh.h);
-    ctx.rotate(kneeAngle * Math.PI / 180);
-    ctx.fillStyle = colorCalf;
-    ctx.fillRect(-s.calf.w / 2, 0, s.calf.w, s.calf.h);
-
-    // 3. РОЛИК (відносно кінця гомілки)
-    ctx.translate(0, s.calf.h);
-    ctx.fillStyle = '#ecf0f1'; // Білий черевик
-    ctx.fillRect(-s.calf.w, 0, s.calf.w * 2, 15);
-    ctx.fillStyle = c.skate;   // Колеса
-    ctx.fillRect(-s.calf.w + 2, 15, s.calf.w * 2 - 4, 6);
-
-    ctx.restore();
-}
-
-// Малюємо руку (Плече -> Лікоть -> Кисть)
-function drawArm(startX, startY, shoulderAngle, elbowAngle, isBackArm, holdingTray = false) {
-    const s = CONFIG.skel;
-    const c = CONFIG.colors;
-    const colorArm = isBackArm ? c.skinDark : c.skin;
-    const colorSleeve = isBackArm ? '#bdc3c7' : c.shirt;
-
-    ctx.save();
-    ctx.translate(startX, startY);
-
-    // 1. ПЛЕЧЕ (з коротким рукавом)
-    ctx.rotate(shoulderAngle * Math.PI / 180);
-    ctx.fillStyle = colorSleeve;
-    ctx.fillRect(-s.arm.w / 2, 0, s.arm.w, s.arm.h - 5); // Рукав
-    ctx.fillStyle = colorArm;
-    ctx.fillRect(-s.arm.w / 2, s.arm.h - 5, s.arm.w, 5); // Шматок шкіри
-
-    // 2. ПЕРЕДПЛІЧЧЯ
-    ctx.translate(0, s.arm.h);
-    ctx.rotate(elbowAngle * Math.PI / 180);
-    ctx.fillStyle = colorArm;
-    ctx.fillRect(-s.forearm.w / 2, 0, s.forearm.w, s.forearm.h);
-
-    // 3. ТАЦЯ З ЛИМОНАДОМ (Якщо ця рука її тримає)
-    if (holdingTray) {
-        ctx.translate(0, s.forearm.h); // Переходимо в долоню
-        // Робимо так, щоб таця завжди була горизонтальною, незалежно від кута руки
-        // Для цього віднімаємо загальний кут нахилу плеча і ліктя
-        ctx.rotate(-(shoulderAngle + elbowAngle) * Math.PI / 180); 
-        
-        // Малюємо тацю
-        ctx.fillStyle = c.tray;
-        ctx.beginPath();
-        ctx.ellipse(15, -5, 25, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Малюємо стакан
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Скло
-        ctx.fillRect(5, -25, 15, 20);
-        ctx.fillStyle = c.glass; // Рідина
-        ctx.fillRect(7, -20, 11, 13);
-        // Лимон
-        ctx.fillStyle = '#f1c40f';
-        ctx.beginPath();
-        ctx.arc(5, -25, 5, 0, Math.PI * 2);
-        ctx.fill();
+window.addEventListener('keydown', (e) => {
+    if (isGameOver && e.code === 'Enter') {
+        score = 0; speedMultiplier = 1; obstaclesArray = [];
+        player.lane = 0; player.y = 0; player.vy = 0; player.isGrounded = true; player.isRolling = false;
+        isGameOver = false;
+        return;
     }
+    if (isGameOver) return;
 
-    ctx.restore();
+    if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > -1) player.lane--;
+    if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 1) player.lane++;
+    
+    // Стрибок
+    if ((e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') && player.isGrounded && !player.isRolling) {
+        player.vy = -18; player.isGrounded = false;
+    }
+    // Присідання
+    if ((e.code === 'ArrowDown' || e.code === 'KeyS') && player.isGrounded && !player.isRolling) {
+        player.isRolling = true; player.rollTimer = 35;
+    }
+});
+
+function project(x, y, z) {
+    if (z <= 0) return null; 
+    const scale = FOV / z;
+    return { x: canvas.width / 2 + (x * scale), y: HORIZON_Y + ((y - CAMERA_Y) * scale), scale: scale };
+}
+
+function spawnObstacle() {
+    const lanes = [-1, 0, 1];
+    const types = [
+        { type: 'low', y: 0, w: 80, h: 40, color: '#e74c3c' }, // Калюжа
+        { type: 'high', y: -90, w: 60, h: 80, color: '#f1c40f' }, // Знак (треба присісти)
+        { type: 'wall', y: 0, w: 90, h: 100, color: '#34495e' } // Коробки
+    ];
+    const t = types[Math.floor(Math.random() * types.length)];
+    obstaclesArray.push({ lane: lanes[Math.floor(Math.random() * lanes.length)], z: Z_LIMIT, ...t });
 }
 
 // ==========================================
-// 4. ГОЛОВНИЙ ЦИКЛ (ЗБИРАЄМО ПЕРСОНАЖА)
+// 6. ІГРОВИЙ ЦИКЛ
 // ==========================================
 function updateAndDraw() {
-    // Очищаємо екран (малюємо фон кафе)
-    ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, 800, 280); // Стіна
-    ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, 280, 800, 120); // Підлога
+    if (isGameOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0, 800, 400);
+        ctx.fillStyle = '#e74c3c'; ctx.textAlign = 'center'; ctx.font = 'bold 55px Arial'; ctx.fillText('АВАРІЯ!', 400, 190);
+        ctx.fillStyle = 'white'; ctx.font = '24px Arial'; ctx.fillText('Натисніть ENTER для рестарту', 400, 240);
+        requestAnimationFrame(updateAndDraw); return;
+    }
 
-    // Оновлюємо час для анімації (чим менший крок, тим повільніше)
-    time += CONFIG.speed;
+    ctx.clearRect(0, 0, 800, 400);
 
-    // --- МАТЕМАТИКА РУХІВ (Кути в градусах) ---
-    // Синусоїда (Math.sin) створює плавні коливання від -1 до 1
-    const runCycle = Math.sin(time); 
+    // Фон (Кафе)
+    ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, 800, HORIZON_Y); 
+    ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, HORIZON_Y, 800, 400 - HORIZON_Y); 
 
-    // Ноги (протифаза: коли одна йде вперед, інша назад)
-    const rightThighAngle = runCycle * 35; 
-    const leftThighAngle = -runCycle * 35; 
-    
-    // Коліна згинаються тільки тоді, коли нога йде назад і піднімається
-    const rightKneeAngle = Math.max(0, Math.sin(time - Math.PI / 2) * 50);
-    const leftKneeAngle = Math.max(0, Math.sin(time + Math.PI / 2) * 50);
+    speedMultiplier += 0.00015;
+    const currentSpeed = 10 * speedMultiplier;
+    score += currentSpeed * 0.01;
 
-    // Задня рука махає в протифазі до передньої ноги
-    const backShoulderAngle = runCycle * 30; 
-    const backElbowAngle = -20; // Трохи зігнута завжди
+    player.update();
 
-    // Передня рука ТРИМАЄ ТАЦЮ (майже не рухається)
-    // Легке похитування для реалізму
-    const frontShoulderAngle = 10 + Math.sin(time * 2) * 5; 
-    const frontElbowAngle = -80 + Math.cos(time * 2) * 5; // Зігнута під 90 градусів
+    // Смуги
+    ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2;
+    for (let i = -1.5; i <= 1.5; i += 1) {
+        const far = project(i * 150, 0, Z_LIMIT), near = project(i * 150, 0, 10);
+        if (far && near) { ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(near.x, near.y); ctx.stroke(); }
+    }
 
-    // --- МАЛЮВАННЯ СКЕЛЕТА (ЗВЕРНИ УВАГУ НА ПОРЯДОК МАЛЮВАННЯ - ГЛИБИНА) ---
-    
-    const x = CONFIG.x;
-    const y = CONFIG.y;
-    const s = CONFIG.skel;
-    const c = CONFIG.colors;
+    // Перешкоди
+    if (Math.random() * 100 < 2.5 && (obstaclesArray.length === 0 || obstaclesArray[obstaclesArray.length-1].z < Z_LIMIT - 350)) {
+        spawnObstacle();
+    }
 
-    // 1. ЗАДНЯ РУКА (Махає)
-    drawArm(x - 10, y - s.torso.h + 10, backShoulderAngle, backElbowAngle, true, false);
+    obstaclesArray.sort((a, b) => b.z - a.z);
+    for (let i = obstaclesArray.length - 1; i >= 0; i--) {
+        let obs = obstaclesArray[i];
+        obs.z -= currentSpeed; 
+        const proj = project(obs.lane * 150, obs.y, obs.z);
 
-    // 2. ЗАДНЯ НОГА (Ліва)
-    drawLeg(x - 8, y, leftThighAngle, leftKneeAngle, true);
+        if (proj) {
+            const drawW = obs.w * proj.scale, drawH = obs.h * proj.scale;
+            ctx.fillStyle = obs.color; ctx.fillRect(proj.x - drawW / 2, proj.y - drawH, drawW, drawH);
 
-    // 3. ТУЛУБ
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(5 * Math.PI / 180); // Легкий нахил тіла вперед
-    
-    // Футболка
-    ctx.fillStyle = c.shirt;
-    ctx.fillRect(-s.torso.w / 2, -s.torso.h, s.torso.w, s.torso.h);
-    // Фартух
-    ctx.fillStyle = c.apron;
-    ctx.fillRect(-s.torso.w / 2 - 2, -s.torso.h / 3, s.torso.w + 4, s.torso.h / 3 + 10);
-    // Бантик від фартуха на спині
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-s.torso.w / 2 - 5, -s.torso.h / 3, 10, 8);
+            // Зіткнення
+            if (obs.z < PLAYER_Z + 20 && obs.z > PLAYER_Z - 40 && Math.abs(player.visualLane - obs.lane) < 0.6) {
+                if (obs.type === 'low' && player.y > -obs.h) isGameOver = true;
+                else if (obs.type === 'high' && (player.y - (player.isRolling ? 45 : 90)) < obs.y) isGameOver = true;
+                else if (obs.type === 'wall') isGameOver = true;
+            }
+        }
+        if (obs.z < 0) obstaclesArray.splice(i, 1);
+    }
 
-    // 4. ГОЛОВА ТА КАПЕЛЮХ
-    // Шия
-    ctx.fillStyle = c.skin;
-    ctx.fillRect(-6, -s.torso.h - 8, 12, 10);
-    // Голова
-    ctx.beginPath();
-    ctx.arc(0, -s.torso.h - 18, 15, 0, Math.PI * 2);
-    ctx.fill();
-    // Волосся (вид ззаду)
-    ctx.fillStyle = '#5c3a21'; // Коричневе волосся
-    ctx.beginPath();
-    ctx.arc(0, -s.torso.h - 18, 16, Math.PI, Math.PI * 2);
-    ctx.fill();
-    // Капелюх ретро-кафе
-    ctx.fillStyle = '#ecf0f1';
-    ctx.beginPath();
-    ctx.moveTo(-12, -s.torso.h - 30);
-    ctx.lineTo(12, -s.torso.h - 30);
-    ctx.lineTo(0, -s.torso.h - 45);
-    ctx.fill();
-    ctx.fillStyle = c.pants; // Синя смужка на капелюсі
-    ctx.fillRect(-10, -s.torso.h - 32, 20, 4);
+    // Малюємо гравця
+    const pProj = project(player.visualLane * 150, player.y, PLAYER_Z);
+    if (pProj) player.draw(pProj);
 
-    ctx.restore();
+    // Рахунок
+    ctx.fillStyle = 'white'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left';
+    ctx.fillText(`Рахунок: ${Math.floor(score)}`, 20, 40);
 
-    // 5. ПЕРЕДНЯ НОГА (Права)
-    drawLeg(x + 8, y, rightThighAngle, rightKneeAngle, false);
-
-    // 6. ПЕРЕДНЯ РУКА З ТАЦЕЮ (Ближче до камери)
-    drawArm(x + 15, y - s.torso.h + 10, frontShoulderAngle, frontElbowAngle, false, true);
-
-    // Запускаємо наступний кадр
     requestAnimationFrame(updateAndDraw);
 }
 
-// Запуск
+// Поїхали!
 updateAndDraw();
