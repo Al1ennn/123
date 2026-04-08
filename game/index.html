@@ -2,17 +2,28 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waiter Rush: 3D Runner</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Гра Офіціант</title>
+    <style>
+        body {
+            background-color: #1a1a2e; /* Темний фон навколо гри */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #2c3e50; /* Колір сірого екрану, який ти бачив */
+            border: 2px solid #16213e;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+    </style>
 </head>
 <body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
     
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-    </div>
-
-   
-   <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
