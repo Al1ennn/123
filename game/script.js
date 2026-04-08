@@ -1,6 +1,5 @@
 // ==========================================
-// ФАЙЛ: script.js (Двигун гри)
-// Цей файл ТІЛЬКИ керує логікою і бере всі цифри з GAME_CONFIG
+// ФАЙЛ: script.js (Двигун скелетної анімації)
 // ==========================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -9,81 +8,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 400;
 
-// Налаштування для видалення білого фону (особливо для твоїх .jpg стрибків)
-const WHITE_THRESHOLD = 210; 
+// 3D Світ
+const FOV = 250, CAMERA_Y = -120, HORIZON_Y = 200, Z_LIMIT = 2000, PLAYER_Z = 150; 
+let score = 0, speedMultiplier = 1, isGameOver = false, obstaclesArray = [];
 
 // ==========================================
-// 1. СИСТЕМА ЗАВАНТАЖЕННЯ АСЕТІВ
-// ==========================================
-async function loadAndCleanImage(url) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous"; 
-        img.src = url;
-        
-        img.onload = () => {
-            const tempCanvas = document.createElement('canvas');
-            const tCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-            tempCanvas.width = img.width;
-            tempCanvas.height = img.height;
-            tCtx.drawImage(img, 0, 0);
-            
-            const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imgData.data;
-            
-            // Хромакей: робимо білий фон прозорим
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i] > WHITE_THRESHOLD && data[i+1] > WHITE_THRESHOLD && data[i+2] > WHITE_THRESHOLD) {
-                    data[i + 3] = 0; 
-                }
-            }
-            tCtx.putImageData(imgData, 0, 0);
-            resolve(tempCanvas);
-        };
-        img.onerror = () => {
-            console.error(`Помилка! Не знайдено файл: ${url}`);
-            resolve(null);
-        };
-    });
-}
-
-// Зберігаємо завантажені картинки
-const Assets = {
-    run: [], jump: [], obstacles: {},
-    async init() {
-        console.log("Завантаження асетів з GAME_CONFIG...");
-        for (let url of GAME_CONFIG.assets.run) {
-            const img = await loadAndCleanImage(url);
-            if (img) this.run.push(img);
-        }
-        for (let url of GAME_CONFIG.assets.jump) {
-            const img = await loadAndCleanImage(url);
-            if (img) this.jump.push(img);
-        }
-        this.obstacles.low = await loadAndCleanImage(GAME_CONFIG.assets.obstacles.low);
-        this.obstacles.high = await loadAndCleanImage(GAME_CONFIG.assets.obstacles.high);
-        this.obstacles.wall = await loadAndCleanImage(GAME_CONFIG.assets.obstacles.wall);
-        console.log("Всі картинки готові!");
-    }
-};
-
-// ==========================================
-// 2. СВІТ ТА ЗМІННІ
-// ==========================================
-const FOV = 250; 
-const CAMERA_Y = -120; 
-const HORIZON_Y = 200; 
-const Z_LIMIT = 2000; 
-const PLAYER_Z = 150; 
-
-let score = 0;
-let speedMultiplier = 1;
-let isGameOver = false;
-let isPaused = false;
-let obstaclesArray = [];
-
-// ==========================================
-// 3. ОБ'ЄКТ ГРАВЦЯ
+// ОБ'ЄКТ ГРАВЦЯ (Скелетна модель)
 // ==========================================
 const player = {
     lane: 0,           
@@ -91,129 +21,140 @@ const player = {
     y: 0,              
     vy: 0,             
     
-    // Беремо розміри прямо з конфігу
-    baseWidth: GAME_CONFIG.player.width,  
-    baseHeight: GAME_CONFIG.player.height, 
-    currentHeight: GAME_CONFIG.player.height, 
-    
     isGrounded: true,
-    isRolling: false,
-    rollTimer: 0,
+    animTimer: 0, // Це наш час для синусоїди
 
-    animState: 'run', 
-    frameIndex: 0,
-    animTimer: 0,
+    // Змінні для збереження поточних кутів суглобів
+    angles: {
+        leftThigh: 0, leftKnee: 0,
+        rightThigh: 0, rightKnee: 0,
+        torsoTilt: 0
+    },
 
     update() {
-        // 3.1. Фізика стрибка
+        // 1. Фізика стрибка
         if (!this.isGrounded) {
             this.vy += GAME_CONFIG.physics.gravity;
             this.y += this.vy;
             if (this.y >= 0) { 
-                this.y = 0;
-                this.vy = 0;
-                this.isGrounded = true;
-                this.animState = 'run';
-                this.frameIndex = 0;
-            } else {
-                this.animState = 'jump';
+                this.y = 0; this.vy = 0; this.isGrounded = true;
             }
         }
 
-        // 3.2. Логіка присідання
-        if (this.isRolling) {
-            this.rollTimer--;
-            this.animState = 'roll';
-            if (this.rollTimer <= 0) {
-                this.isRolling = false;
-                this.currentHeight = this.baseHeight; 
-                if(this.isGrounded) this.animState = 'run';
-            }
-        }
-
-        // 3.3. Плавний перехід між смугами
         this.visualLane += (this.lane - this.visualLane) * GAME_CONFIG.physics.laneSmoothness;
 
-        // 3.4. Анімація
-        const currentAnimConfig = GAME_CONFIG.animations[this.animState];
-        this.animTimer++;
-        if (this.animTimer >= currentAnimConfig.speed) {
-            this.animTimer = 0;
-            this.frameIndex++;
-            if (this.frameIndex >= currentAnimConfig.frames.length) {
-                this.frameIndex = 0; 
-            }
+        // 2. МАТЕМАТИКА РУХУ (Кінематика)
+        if (this.isGrounded) {
+            this.animTimer += GAME_CONFIG.runAnimation.speed;
+            
+            // Math.sin дає плавні хвилі від -1 до 1. Множимо їх на градуси (legSwing).
+            // Права і ліва нога рухаються в протифазі (додаємо Math.PI для лівої)
+            
+            // Стегна (гойдаються вперед-назад)
+            this.angles.rightThigh = Math.sin(this.animTimer) * GAME_CONFIG.runAnimation.legSwing;
+            this.angles.leftThigh = Math.sin(this.animTimer + Math.PI) * GAME_CONFIG.runAnimation.legSwing;
+
+            // Коліна (згинаються тільки в один бік, тому беремо Math.max(0, ...))
+            // Додаємо зсув фази, щоб коліно згиналося тоді, коли нога йде назад
+            this.angles.rightKnee = Math.max(0, Math.sin(this.animTimer - Math.PI/2) * GAME_CONFIG.runAnimation.kneeBend);
+            this.angles.leftKnee = Math.max(0, Math.sin(this.animTimer + Math.PI/2) * GAME_CONFIG.runAnimation.kneeBend);
+            
+            // Тіло трохи нахиляється вперед під час бігу
+            this.angles.torsoTilt = 10; 
+        } else {
+            // Поза в повітрі (стрибок)
+            this.angles.rightThigh = -20;
+            this.angles.rightKnee = 40;
+            this.angles.leftThigh = 10;
+            this.angles.leftKnee = 10;
+            this.angles.torsoTilt = 0;
         }
     },
 
+    // 3. МАЛЮВАННЯ СКЕЛЕТА
     draw(proj) {
-        const drawW = this.baseWidth * proj.scale;
-        const drawH = this.currentHeight * proj.scale;
-        const drawX = proj.x - drawW / 2;
-        const drawY = proj.y - drawH;
-
-        let actualFrameNumber = 0;
-        const currentAnimConfig = GAME_CONFIG.animations[this.animState];
+        ctx.save(); // Запам'ятовуємо чисте полотно
         
-        if (currentAnimConfig && currentAnimConfig.frames[this.frameIndex] !== undefined) {
-            actualFrameNumber = currentAnimConfig.frames[this.frameIndex];
-        }
+        // Переносимо центр координат у таз персонажа (опускаємо на землю)
+        ctx.translate(proj.x, proj.y);
+        ctx.scale(proj.scale, proj.scale); // Масштабуємо за законами 3D
 
-        // Для стрибка беремо картинки з масиву jump, для бігу та присідання - з run
-        const spriteArray = (this.animState === 'jump') ? Assets.jump : Assets.run;
+        const skel = GAME_CONFIG.skeleton;
+
+        // --- ЛІВА НОГА (Дальня) ---
+        this.drawLeg(
+            -skel.torso.width/4, 0, // Точка кріплення (тазостегновий суглоб)
+            this.angles.leftThigh, this.angles.leftKnee, 
+            '#2c3e50', '#34495e' // Кольори (зробимо трохи темнішими для глибини)
+        );
+
+        // --- ТУЛУБ ---
+        ctx.save();
+        ctx.translate(0, 0); // Від таза
+        ctx.rotate(this.angles.torsoTilt * Math.PI / 180); // Нахил
         
-        if (spriteArray && spriteArray.length > 0) {
-            const safeFrame = actualFrameNumber % spriteArray.length;
-            const currentImg = spriteArray[safeFrame];
-            if (currentImg) {
-                ctx.drawImage(currentImg, drawX, drawY, drawW, drawH);
-            }
-        } else {
-            // Заглушка, поки вантажаться картинки
-            ctx.fillStyle = '#3498db';
-            ctx.fillRect(drawX, drawY, drawW, drawH);
-        }
+        ctx.fillStyle = '#3498db'; // Синя уніформа
+        // Малюємо тулуб вгору від таза
+        ctx.fillRect(-skel.torso.width/2, -skel.torso.height, skel.torso.width, skel.torso.height);
+        
+        // ГОЛОВА (на тулубі)
+        ctx.fillStyle = '#f1c40f'; // Колір шкіри
+        ctx.beginPath();
+        ctx.arc(0, -skel.torso.height - 10, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // --- ПРАВА НОГА (Ближня) ---
+        this.drawLeg(
+            skel.torso.width/4, 0, // Точка кріплення
+            this.angles.rightThigh, this.angles.rightKnee, 
+            '#e67e22', '#d35400' // Шкіра
+        );
+
+        ctx.restore(); // Повертаємо координати до нормальних
+    },
+
+    // ФУНКЦІЯ МАЛЮВАННЯ НОГИ (Forward Kinematics)
+    drawLeg(x, y, thighAngle, kneeAngle, thighColor, calfColor) {
+        const skel = GAME_CONFIG.skeleton;
+        
+        ctx.save(); // Зберігаємо позицію перед малюванням ноги
+        
+        // 1. СТЕГНО
+        ctx.translate(x, y); // Стаємо в суглоб таза
+        ctx.rotate(thighAngle * Math.PI / 180); // Обертаємо стегно
+        
+        ctx.fillStyle = thighColor;
+        // Малюємо вниз від суглоба
+        ctx.fillRect(-skel.leg.width/2, 0, skel.leg.width, skel.leg.thighLength);
+
+        // 2. КОЛІНО ТА ГОМІЛКА
+        // Переносимо центр координат на кінець стегна (у коліно!)
+        ctx.translate(0, skel.leg.thighLength); 
+        ctx.rotate(kneeAngle * Math.PI / 180); // Обертаємо гомілку ВІДНОСНО стегна
+        
+        ctx.fillStyle = calfColor;
+        ctx.fillRect(-skel.leg.width/2, 0, skel.leg.width, skel.leg.calfLength);
+
+        // РОЛИК (на кінці гомілки)
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(-skel.leg.width, skel.leg.calfLength, skel.leg.width * 2, 8);
+
+        ctx.restore(); // Повертаємо координати назад
     }
 };
 
 // ==========================================
-// 4. КЕРУВАННЯ
+// КЕРУВАННЯ ТА ЛОГІКА ГРИ (Спрощено для прикладу)
 // ==========================================
 window.addEventListener('keydown', (e) => {
-    if (isGameOver && e.code === 'Enter') { resetGame(); return; }
-    if (e.code === 'Escape') { isPaused = !isPaused; return; }
-    if (isPaused || isGameOver) return;
-
     if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > -1) player.lane--;
     if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 1) player.lane++;
-
-    // Стрибок
-    if ((e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') && player.isGrounded && !player.isRolling) {
+    if ((e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') && player.isGrounded) {
         player.vy = GAME_CONFIG.physics.jumpPower;
         player.isGrounded = false;
-        player.frameIndex = 0; 
-    }
-
-    // Присідання
-    if ((e.code === 'ArrowDown' || e.code === 'KeyS') && player.isGrounded && !player.isRolling) {
-        player.isRolling = true;
-        player.currentHeight = GAME_CONFIG.player.rollHeight; 
-        player.rollTimer = GAME_CONFIG.player.rollDuration; 
-        player.frameIndex = 0;
     }
 });
-
-function spawnObstacle() {
-    const lanes = [-1, 0, 1];
-    const lane = lanes[Math.floor(Math.random() * lanes.length)];
-    const types = [
-        { type: 'low', y: 0, w: 80, h: 40, img: Assets.obstacles.low, color: '#e74c3c' },
-        { type: 'high', y: -90, w: 60, h: 80, img: Assets.obstacles.high, color: '#f1c40f' },
-        { type: 'wall', y: 0, w: 90, h: 100, img: Assets.obstacles.wall, color: '#34495e' }
-    ];
-    const obsType = types[Math.floor(Math.random() * types.length)];
-    obstaclesArray.push({ lane: lane, z: Z_LIMIT, y: obsType.y, w: obsType.w, h: obsType.h, type: obsType.type, img: obsType.img, color: obsType.color });
-}
 
 function project(x, y, z) {
     if (z <= 0) return null; 
@@ -221,92 +162,23 @@ function project(x, y, z) {
     return { x: canvas.width / 2 + (x * scale), y: HORIZON_Y + ((y - CAMERA_Y) * scale), scale: scale };
 }
 
-function resetGame() {
-    score = 0; speedMultiplier = 1; obstaclesArray = [];
-    player.lane = 0; player.visualLane = 0; player.y = 0; player.vy = 0;
-    player.isGrounded = true; player.isRolling = false; player.currentHeight = player.baseHeight;
-    isGameOver = false; isPaused = false;
-}
-
-// ==========================================
-// 5. ГОЛОВНИЙ ЦИКЛ ГРИ
-// ==========================================
 function updateAndDraw() {
-    if (isGameOver || isPaused) {
-        if (isGameOver) {
-            ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0, canvas.width, canvas.height);
-            ctx.fillStyle = '#e74c3c'; ctx.textAlign = 'center'; ctx.font = 'bold 55px Arial';
-            ctx.fillText('АВАРІЯ!', canvas.width/2, 190);
-            ctx.fillStyle = 'white'; ctx.font = '24px Arial';
-            ctx.fillText(`Рахунок: ${Math.floor(score)}`, canvas.width/2, 240);
-            ctx.fillText('Натисніть ENTER для рестарту', canvas.width/2, 280);
-        }
-        if (isPaused) {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0, canvas.width, canvas.height);
-            ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = 'bold 50px Arial';
-            ctx.fillText('ПАУЗА', canvas.width/2, 200);
-        }
-        requestAnimationFrame(updateAndDraw); return;
-    }
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     speedMultiplier += GAME_CONFIG.physics.acceleration;
-    const currentSpeed = GAME_CONFIG.physics.baseSpeed * speedMultiplier;
-    score += currentSpeed * 0.01;
+    score += GAME_CONFIG.physics.baseSpeed * speedMultiplier * 0.01;
 
     player.update();
-
-    if (Math.random() * 100 < 2.5) { 
-        if (obstaclesArray.length === 0 || obstaclesArray[obstaclesArray.length-1].z < Z_LIMIT - 350) spawnObstacle();
-    }
 
     // Небо і підлога
     ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, HORIZON_Y); 
     ctx.fillStyle = '#95a5a6'; ctx.fillRect(0, HORIZON_Y, canvas.width, canvas.height - HORIZON_Y); 
 
-    // Смуги
-    ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2;
-    for (let i = -1.5; i <= 1.5; i += 1) {
-        const far = project(i * 150, 0, Z_LIMIT);
-        const near = project(i * 150, 0, 10);
-        if (far && near) { ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(near.x, near.y); ctx.stroke(); }
-    }
-
-    obstaclesArray.sort((a, b) => b.z - a.z);
-    for (let i = obstaclesArray.length - 1; i >= 0; i--) {
-        let obs = obstaclesArray[i];
-        obs.z -= currentSpeed; 
-        const proj = project(obs.lane * 150, obs.y, obs.z);
-
-        if (proj) {
-            const drawW = obs.w * proj.scale, drawH = obs.h * proj.scale;
-            const drawX = proj.x - drawW / 2, drawY = proj.y - drawH; 
-
-            if (obs.img) ctx.drawImage(obs.img, drawX, drawY, drawW, drawH);
-            else { ctx.fillStyle = obs.color; ctx.fillRect(drawX, drawY, drawW, drawH); }
-
-            if (obs.z < PLAYER_Z + 20 && obs.z > PLAYER_Z - 40) {
-                if (Math.abs(player.visualLane - obs.lane) < 0.6) {
-                    if (obs.type === 'low' && player.y > -obs.h) isGameOver = true;
-                    else if (obs.type === 'high' && (player.y - player.currentHeight) < obs.y) isGameOver = true;
-                    else if (obs.type === 'wall') isGameOver = true;
-                }
-            }
-        }
-        if (obs.z < 0) obstaclesArray.splice(i, 1);
-    }
-
+    // Малюємо гравця (виклик нашого скелета)
     const pProj = project(player.visualLane * 150, player.y, PLAYER_Z);
     if (pProj) player.draw(pProj);
-
-    ctx.fillStyle = 'white'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left';
-    ctx.fillText(`Рахунок: ${Math.floor(score)}`, 20, 40);
 
     requestAnimationFrame(updateAndDraw);
 }
 
-// ==========================================
-// 6. СТАРТ ГРИ
-// ==========================================
-Assets.init().then(() => { resetGame(); updateAndDraw(); });
+updateAndDraw(); // Запуск
