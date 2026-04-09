@@ -53,9 +53,9 @@ window.onload = function() {
 
         ctx.translate(0, SKEL.calf.h);
         ctx.fillStyle = '#ecf0f1'; 
-        ctx.fillRect(-SKEL.calf.w, 0, SKEL.calf.w * 2, 15);
+        ctx.fillRect(-SKEL.calf.w, 0, SKEL.calf.w * 2, 15); // Черевик
         ctx.fillStyle = COLORS.skate;
-        ctx.fillRect(-SKEL.calf.w + 2, 15, SKEL.calf.w * 2 - 4, 6);
+        ctx.fillRect(-SKEL.calf.w + 2, 15, SKEL.calf.w * 2 - 4, 6); // Колеса
 
         ctx.restore();
     }
@@ -125,6 +125,10 @@ window.onload = function() {
             ctx.save();
             ctx.translate(proj.x, proj.y);
             ctx.scale(proj.scale, proj.scale);
+
+            // ВИПРАВЛЕННЯ ПРОВАЛЮВАННЯ: 
+            // Піднімаємо весь скелет вгору на висоту прямих ніг з роликами (28 + 30 + 15 + 6 = 79)
+            ctx.translate(0, -79);
 
             let torsoTilt = 5, rightThighAngle = 0, leftThighAngle = 0;
             let rightKneeAngle = 0, leftKneeAngle = 0;
@@ -246,7 +250,6 @@ window.onload = function() {
 
         // Спавн перешкод
         if (Math.random() * 100 < 2.5) {
-            // Перевіряємо, чи найдальша перешкода (index 0) достатньо далеко
             if (obstaclesArray.length === 0 || obstaclesArray[0].z < Z_LIMIT - 350) {
                 spawnObstacle();
             }
@@ -262,9 +265,11 @@ window.onload = function() {
                 const drawW = obs.w * proj.scale, drawH = obs.h * proj.scale;
                 ctx.fillStyle = obs.color; ctx.fillRect(proj.x - drawW / 2, proj.y - drawH, drawW, drawH);
 
+                // Колізія (Оновлена під новий зріст)
                 if (obs.z < PLAYER_Z + 20 && obs.z > PLAYER_Z - 40 && Math.abs(player.visualLane - obs.lane) < 0.6) {
                     if (obs.type === 'low' && player.y > -obs.h) isGameOver = true;
-                    else if (obs.type === 'high' && (player.y - (player.isRolling ? 45 : 90)) < obs.y) isGameOver = true;
+                    // Якщо це високий знак (high), перевіряємо чи він пригнувся. Якщо пригнувся (isRolling) - висота хітбоксу 45, інакше 110.
+                    else if (obs.type === 'high' && (player.y - (player.isRolling ? 45 : 110)) < obs.y) isGameOver = true;
                     else if (obs.type === 'wall') isGameOver = true;
                 }
             }
