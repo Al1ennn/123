@@ -1,0 +1,28 @@
+body {
+    background-color: #1a1a1a; /* Дуже темний сірий для фону */
+    color: #0ff; /* Неоновий ціан */
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+#game-ui {
+    text-align: center;
+    margin-bottom: 10px;
+    text-shadow: 0 0 5px #0ff;
+}
+
+#gameCanvas {
+    background-color: #000; /* Чорна підлога кафе */
+    border: 3px solid #f0f; /* Неоновий маджента */
+    box-shadow: 0 0 20px #f0f;
+}
+
+#score {
+    font-size: 1.5em;
+    font-weight: bold;
+}
