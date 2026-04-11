@@ -17,11 +17,12 @@ for (let r = 0; r < MAP_HEIGHT; r++) {
     }
 }
 
+// --- ЗАВАНТАЖЕННЯ 4-х КАРТИНОК (.webp) ---
 const sprites = {
     up: new Image(), down: new Image(), left: new Image(), right: new Image()
 };
 
-// ⚠️ УВАГА: ТВОЇ ФАЙЛИ
+// ⚠️ ПЕРЕВІР НАЗВИ ФАЙЛІВ!
 sprites.up.src = 'up.webp';       
 sprites.down.src = 'down.webp';   
 sprites.left.src = 'left.webp';   
@@ -30,7 +31,7 @@ sprites.right.src = 'right.webp';
 const waiter = {
     x: TILE_SIZE * 1.5,
     y: TILE_SIZE * 1.5,
-    size: TILE_SIZE * 1.1, // ВІН ТЕПЕР ВЕЛИКИЙ (110% від розміру клітинки)
+    size: TILE_SIZE * 1.2, // ВІЗУАЛЬНИЙ РОЗМІР: 120% від клітинки (ВЕЛИКИЙ)
     score: 0,
     dir: 'right' 
 };
@@ -78,9 +79,11 @@ function drawWaiter() {
     }
 }
 
+// --- МАГІЯ ХІТБОКСІВ ---
+// Додали параметр isPlayer, щоб розрізняти гравця і ворогів
 function isCollision(x, y, isPlayer) {
-    // МАГІЯ: Якщо це гравець, робимо "хітбокс" значно меншим за картинку, щоб він не чіплявся за стіни
-    const physicalSize = isPlayer ? (TILE_SIZE * 0.6) : (TILE_SIZE * 0.8);
+    // Якщо це гравець - хітбокс всього 45%. Якщо ворог - 80%
+    const physicalSize = isPlayer ? (TILE_SIZE * 0.45) : (TILE_SIZE * 0.8);
     const collisionRadius = physicalSize / 2;
     
     const pointsToTest = [
@@ -109,7 +112,7 @@ function moveWaiter() {
     if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
     if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
 
-    // Передаємо "true", бо це гравець
+    // Передаємо true, бо це рух гравця
     if (!isCollision(nextX, waiter.y, true)) waiter.x = nextX;
     if (!isCollision(waiter.x, nextY, true)) waiter.y = nextY;
 }
@@ -149,7 +152,7 @@ function moveEnemies() {
         if (enemy.dir === 'left') nextX -= ENEMY_SPEED;
         if (enemy.dir === 'right') nextX += ENEMY_SPEED;
 
-        // Передаємо "false", бо це ворог
+        // Передаємо false, бо це рух ворога
         if (isCollision(nextX, nextY, false)) {
             enemy.dir = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
             enemy.x = Math.floor(enemy.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
@@ -167,8 +170,8 @@ function checkEnemyHit() {
         let dy = waiter.y - enemy.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Хітбокс для програшу теж трохи менший, щоб було чесно
-        if (distance < (TILE_SIZE * 0.4 + enemy.size / 2)) {
+        // Чесний хітбокс для програшу (щоб не вбивали за півметра)
+        if (distance < (TILE_SIZE * 0.3 + enemy.size / 2)) {
             gameActive = false;
             loseScreen.style.display = 'flex'; 
         }
