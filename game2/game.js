@@ -47,19 +47,53 @@ function drawMap() {
 }
 
 function drawWaiter() {
-    ctx.fillStyle = '#0f0'; // Зелений плейсхолдер офіціанта
-    ctx.fillRect(waiter.x - waiter.size / 2, waiter.y - waiter.size / 2, waiter.size, waiter.size);
-}
+    let currentImage;
 
+    // Вибираємо правильну картинку зі списку sprites
+    if (waiter.dir === 'up') {
+        currentImage = sprites.up; // Для руху вгору у нас одна картинка
+    } else if (waiter.dir === 'down') {
+        currentImage = sprites.down; // Для руху вниз (до нас) у нас одна картинка
+    } else if (waiter.dir === 'left') {
+        // Якщо їде - беремо картинку ходьби, якщо відпустили кнопку - стоїть
+        currentImage = waiter.isMoving ? sprites.leftWalk : sprites.leftStand;
+    } else if (waiter.dir === 'right') {
+        // Те саме для правої сторони
+        currentImage = waiter.isMoving ? sprites.rightWalk : sprites.rightStand;
+    }
+
+    // Перевіряємо, чи встигла картинка завантажитись з комп'ютера
+    if (currentImage && currentImage.complete && currentImage.naturalWidth !== 0) {
+        // Малюємо вибрану картинку цілком (без вирізання)
+        ctx.drawImage(
+            currentImage,
+            waiter.x - waiter.size / 2, 
+            waiter.y - waiter.size / 2, 
+            waiter.size, 
+            waiter.size
+        );
+    } else {
+        // Заглушка, якщо ти неправильно вказав назву файлу, або він ще вантажиться
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(waiter.x - waiter.size / 2, waiter.y - waiter.size / 2, waiter.size, waiter.size);
+    }
+}
 function moveWaiter() {
     let nextX = waiter.x;
     let nextY = waiter.y;
 
-    // Додаємо швидкість залежно від того, які кнопки зараз затиснуті
-    if (controls.up) nextY -= WAITER_SPEED;
-    if (controls.down) nextY += WAITER_SPEED;
-    if (controls.left) nextX -= WAITER_SPEED;
-    if (controls.right) nextX += WAITER_SPEED;
+    // За замовчуванням вважаємо, що він стоїть
+    waiter.isMoving = false; 
+
+    // Якщо натиснута кнопка - змінюємо координати, напрямок і ставимо isMoving = true
+    if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; waiter.isMoving = true; }
+    if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; waiter.isMoving = true; }
+    if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; waiter.isMoving = true; }
+    if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; waiter.isMoving = true; }
+
+    if (!isCollision(nextX, waiter.y, waiter.size)) waiter.x = nextX;
+    if (!isCollision(waiter.x, nextY, waiter.size)) waiter.y = nextY;
+}
 
     // Роздільна перевірка зіткнень (щоб офіціант міг ковзати вздовж стін)
     // Перевіряємо рух по горизонталі (X)
