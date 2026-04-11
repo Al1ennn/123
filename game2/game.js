@@ -113,12 +113,33 @@ function isCollision(x, y, isPlayer) {
 function moveWaiter() {
     let nextX = waiter.x;
     let nextY = waiter.y;
+    let centerX = Math.floor(waiter.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+    let centerY = Math.floor(waiter.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
 
-    if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; }
-    if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; }
-    if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
-    if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
+    // Швидкість вирівнювання (магніт)
+    const snapSpeed = 2; 
 
+    if (controls.up || controls.down) {
+        // Якщо йдемо вгору/вниз, плавно підтягуємо до центру по X
+        if (Math.abs(waiter.x - centerX) < snapSpeed) waiter.x = centerX;
+        else if (waiter.x < centerX) waiter.x += snapSpeed;
+        else if (waiter.x > centerX) waiter.x -= snapSpeed;
+        
+        if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; }
+        if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; }
+    }
+
+    if (controls.left || controls.right) {
+        // Якщо йдемо вліво/вправо, плавно підтягуємо до центру по Y
+        if (Math.abs(waiter.y - centerY) < snapSpeed) waiter.y = centerY;
+        else if (waiter.y < centerY) waiter.y += snapSpeed;
+        else if (waiter.y > centerY) waiter.y -= snapSpeed;
+
+        if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
+        if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
+    }
+
+    // Перевірка зіткнень залишається
     if (!isCollision(nextX, waiter.y, true)) waiter.x = nextX;
     if (!isCollision(waiter.x, nextY, true)) waiter.y = nextY;
 }
