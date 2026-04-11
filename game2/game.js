@@ -1,5 +1,5 @@
 const levelsData = JSON.parse(document.getElementById('level-data').textContent);
-let currentLevelIndex = 0; // Починаємо з рівня 0 (перший рівень)
+let currentLevelIndex = 0; // Починаємо з першого рівня (індекс 0)
 
 // Глобальні змінні, які будуть змінюватися на кожному рівні
 let TILE_SIZE, WAITER_SPEED, ENEMY_SPEED, MAP_WIDTH, MAP_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT;
@@ -81,7 +81,7 @@ document.getElementById('next-level-btn').addEventListener('click', () => {
     loadLevel(currentLevelIndex);
 });
 
-// --- МАЛЮВАННЯ ТА ЛОГІКА (з минулих кроків) ---
+// --- МАЛЮВАННЯ ТА ЛОГІКА ---
 function drawMap() {
     for (let r = 0; r < MAP_HEIGHT; r++) {
         for (let c = 0; c < MAP_WIDTH; c++) {
@@ -228,9 +228,9 @@ function collectMoney() {
             // ПЕРЕВІРКА НА ПЕРЕМОГУ
             if (waiter.score === totalCoins) {
                 gameActive = false; 
-                // Перевіряємо, чи є ще рівні
+                // Перевіряємо, чи є ще рівні в JSON
                 if (currentLevelIndex < levelsData.length - 1) {
-                    winScreen.style.display = 'flex'; // Показуємо вибір
+                    winScreen.style.display = 'flex'; // Показуємо вибір наступного рівня
                 } else {
                     finalWinScreen.style.display = 'flex'; // Пройшов усю гру!
                 }
@@ -252,8 +252,6 @@ function checkEnemyHit() {
 }
 
 function gameLoop() {
-    // Якщо гра не активна, ми все одно викликаємо requestAnimationFrame, 
-    // щоб цикл не вмер, але не оновлюємо координати
     if (gameActive) {
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         moveWaiter();
