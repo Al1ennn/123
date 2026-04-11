@@ -1,8 +1,8 @@
-// --- ЧИТАЄМО ТА РОЗБИРАЄМО JSON ---
+// 1. СПОЧАТКУ ЧИТАЄМО JSON
 const jsonText = document.getElementById('level-data').textContent;
-const levelConfig = JSON.parse(jsonText); // Парсимо JSON у JavaScript об'єкт!
+const levelConfig = JSON.parse(jsonText); 
 
-// Отримуємо константи з JSON
+// 2. СТВОРЮЄМО КОНСТАНТИ З JSON
 const TILE_SIZE = levelConfig.tileSize;
 const WAITER_SPEED = levelConfig.waiterSpeed;
 const ENEMY_SPEED = levelConfig.enemySpeed;
@@ -13,7 +13,7 @@ const MAP_HEIGHT = INITIAL_MAP.length;
 const CANVAS_WIDTH = MAP_WIDTH * TILE_SIZE;
 const CANVAS_HEIGHT = MAP_HEIGHT * TILE_SIZE;
 
-// --- НАЛАШТУВАННЯ CANVAS ---
+// 3. І ТІЛЬКИ ТЕПЕР НАЛАШТОВУЄМО CANVAS
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.querySelector('#score span');
@@ -56,7 +56,7 @@ const enemiesList = [
     { x: TILE_SIZE * 11.5, y: TILE_SIZE * 7.5, color: '#aa00ff', dir: 'right', size: TILE_SIZE * 0.8 }
 ];
 
-// --- МАЛЮВАННЯ КАРТИ (БЕЗ КВАДРАТІВ!) ---
+// --- МАЛЮВАННЯ КАРТИ (СУЦІЛЬНІ СТІНИ) ---
 function drawMap() {
     for (let r = 0; r < MAP_HEIGHT; r++) {
         for (let c = 0; c < MAP_WIDTH; c++) {
@@ -65,14 +65,11 @@ function drawMap() {
             let y = r * TILE_SIZE;
 
             if (tile === 1) { 
-                // МАГІЯ ТУТ: Замість рамок малюємо суцільний темно-фіолетовий блок.
-                // Розмір + 1px робиться для того, щоб між квадратами не було просвітів (щоб стіна була монолітною)
-                ctx.fillStyle = '#1e003b'; // Темно-фіолетовий
-                ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1);
+                ctx.fillStyle = '#1e003b'; // Темно-фіолетовий колір стін
+                ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1); // +1 прибирає щілини (сітку)
             } else if (tile === 0) { 
                 ctx.fillStyle = '#ff0'; 
                 ctx.beginPath();
-                // Зробив монетки трохи акуратнішими
                 ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE * 0.15, 0, Math.PI * 2);
                 ctx.fill();
             }
@@ -200,5 +197,4 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Запуск
 gameLoop();
