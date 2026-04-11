@@ -1,3 +1,19 @@
+// --- ЧИТАЄМО ТА РОЗБИРАЄМО JSON ---
+const jsonText = document.getElementById('level-data').textContent;
+const levelConfig = JSON.parse(jsonText); // Парсимо JSON у JavaScript об'єкт!
+
+// Отримуємо константи з JSON
+const TILE_SIZE = levelConfig.tileSize;
+const WAITER_SPEED = levelConfig.waiterSpeed;
+const ENEMY_SPEED = levelConfig.enemySpeed;
+const INITIAL_MAP = levelConfig.map;
+
+const MAP_WIDTH = INITIAL_MAP[0].length;
+const MAP_HEIGHT = INITIAL_MAP.length;
+const CANVAS_WIDTH = MAP_WIDTH * TILE_SIZE;
+const CANVAS_HEIGHT = MAP_HEIGHT * TILE_SIZE;
+
+// --- НАЛАШТУВАННЯ CANVAS ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.querySelector('#score span');
@@ -17,12 +33,8 @@ for (let r = 0; r < MAP_HEIGHT; r++) {
     }
 }
 
-// --- ЗАВАНТАЖЕННЯ 4-х КАРТИНОК (.webp) ---
-const sprites = {
-    up: new Image(), down: new Image(), left: new Image(), right: new Image()
-};
-
-// ⚠️ ПЕРЕВІР НАЗВИ ФАЙЛІВ!
+// --- КАРТИНКИ ОФІЦІАНТА ---
+const sprites = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
 sprites.up.src = 'up.webp';       
 sprites.down.src = 'down.webp';   
 sprites.left.src = 'left.webp';   
@@ -31,11 +43,20 @@ sprites.right.src = 'right.webp';
 const waiter = {
     x: TILE_SIZE * 1.5,
     y: TILE_SIZE * 1.5,
-    size: TILE_SIZE * 1.2, // ВІЗУАЛЬНИЙ РОЗМІР: 120% від клітинки (ВЕЛИКИЙ)
+    size: TILE_SIZE * 1.2,
     score: 0,
     dir: 'right' 
 };
 
+// --- ВОРОГИ ---
+const possibleDirections = ['up', 'down', 'left', 'right'];
+const enemiesList = [
+    { x: TILE_SIZE * 9.5, y: TILE_SIZE * 7.5, color: '#ff0000', dir: 'up', size: TILE_SIZE * 0.8 },
+    { x: TILE_SIZE * 10.5, y: TILE_SIZE * 7.5, color: '#ff8800', dir: 'left', size: TILE_SIZE * 0.8 },
+    { x: TILE_SIZE * 11.5, y: TILE_SIZE * 7.5, color: '#aa00ff', dir: 'right', size: TILE_SIZE * 0.8 }
+];
+
+// --- МАЛЮВАННЯ КАРТИ (БЕЗ КВАДРАТІВ!) ---
 function drawMap() {
     for (let r = 0; r < MAP_HEIGHT; r++) {
         for (let c = 0; c < MAP_WIDTH; c++) {
@@ -44,14 +65,15 @@ function drawMap() {
             let y = r * TILE_SIZE;
 
             if (tile === 1) { 
-                ctx.fillStyle = '#333';
-                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                ctx.strokeStyle = '#f0f'; 
-                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                // МАГІЯ ТУТ: Замість рамок малюємо суцільний темно-фіолетовий блок.
+                // Розмір + 1px робиться для того, щоб між квадратами не було просвітів (щоб стіна була монолітною)
+                ctx.fillStyle = '#1e003b'; // Темно-фіолетовий
+                ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1);
             } else if (tile === 0) { 
                 ctx.fillStyle = '#ff0'; 
                 ctx.beginPath();
-                ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE * 0.2, 0, Math.PI * 2);
+                // Зробив монетки трохи акуратнішими
+                ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE * 0.15, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -66,37 +88,25 @@ function drawWaiter() {
     else if (waiter.dir === 'right') currentImage = sprites.right;
 
     if (currentImage && currentImage.complete && currentImage.naturalWidth !== 0) {
-        ctx.drawImage(
-            currentImage,
-            waiter.x - waiter.size / 2, 
-            waiter.y - waiter.size / 2, 
-            waiter.size, 
-            waiter.size
-        );
+        ctx.drawImage(currentImage, waiter.x - waiter.size / 2, waiter.y - waiter.size / 2, waiter.size, waiter.size);
     } else {
         ctx.fillStyle = '#0f0';
         ctx.fillRect(waiter.x - waiter.size / 2, waiter.y - waiter.size / 2, waiter.size, waiter.size);
     }
 }
 
-// --- МАГІЯ ХІТБОКСІВ ---
-// Додали параметр isPlayer, щоб розрізняти гравця і ворогів
 function isCollision(x, y, isPlayer) {
-    // Якщо це гравець - хітбокс всього 45%. Якщо ворог - 80%
     const physicalSize = isPlayer ? (TILE_SIZE * 0.45) : (TILE_SIZE * 0.8);
     const collisionRadius = physicalSize / 2;
     
     const pointsToTest = [
-        { x: x - collisionRadius, y: y - collisionRadius },
-        { x: x + collisionRadius, y: y - collisionRadius },
-        { x: x - collisionRadius, y: y + collisionRadius },
-        { x: x + collisionRadius, y: y + collisionRadius }
+        { x: x - collisionRadius, y: y - collisionRadius }, { x: x + collisionRadius, y: y - collisionRadius },
+        { x: x - collisionRadius, y: y + collisionRadius }, { x: x + collisionRadius, y: y + collisionRadius }
     ];
 
     for (let point of pointsToTest) {
         let gridX = Math.floor(point.x / TILE_SIZE);
         let gridY = Math.floor(point.y / TILE_SIZE);
-
         if (gridX < 0 || gridX >= MAP_WIDTH || gridY < 0 || gridY >= MAP_HEIGHT) return true;
         if (gameMap[gridY][gridX] === 1) return true;
     }
@@ -112,7 +122,6 @@ function moveWaiter() {
     if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
     if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
 
-    // Передаємо true, бо це рух гравця
     if (!isCollision(nextX, waiter.y, true)) waiter.x = nextX;
     if (!isCollision(waiter.x, nextY, true)) waiter.y = nextY;
 }
@@ -152,7 +161,6 @@ function moveEnemies() {
         if (enemy.dir === 'left') nextX -= ENEMY_SPEED;
         if (enemy.dir === 'right') nextX += ENEMY_SPEED;
 
-        // Передаємо false, бо це рух ворога
         if (isCollision(nextX, nextY, false)) {
             enemy.dir = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
             enemy.x = Math.floor(enemy.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
@@ -170,7 +178,6 @@ function checkEnemyHit() {
         let dy = waiter.y - enemy.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Чесний хітбокс для програшу (щоб не вбивали за півметра)
         if (distance < (TILE_SIZE * 0.3 + enemy.size / 2)) {
             gameActive = false;
             loseScreen.style.display = 'flex'; 
@@ -180,9 +187,7 @@ function checkEnemyHit() {
 
 function gameLoop() {
     if (!gameActive) return; 
-
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    
     moveWaiter();
     moveEnemies();
     collectMoney();
@@ -195,4 +200,5 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Запуск
 gameLoop();
