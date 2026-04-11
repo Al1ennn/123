@@ -9,15 +9,26 @@
 <body>
     <div id="game-ui">
         <h1>Retro Cafe Waiter</h1>
-        <div id="score">Зібрано чайових: $<span>0</span></div>
+        <div id="score">Рівень: <span id="level-display">1</span> | Чайові: $<span id="score-display">0</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
     
-    <div id="win-screen">
-        <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">УСІ ЧАЙОВІ ЗІБРАНО!</h2>
-        <button onclick="location.reload()">Грати ще раз</button>
+    <div id="win-screen" class="screen">
+        <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">ЗМІНУ ЗАКРИТО!</h2>
+        <p>Ти зібрав усі чайові на цьому поверсі.</p>
+        <div style="display: flex; gap: 20px; margin-top: 20px;">
+            <button id="next-level-btn" style="color: #0f0; border-color: #0f0;">👉 Наступний рівень</button>
+            <button onclick="alert('Ось твій промокод на каву: RETRO10! Дякуємо за роботу.'); location.reload();" style="color: #ff0; border-color: #ff0;">🎁 Забрати знижку 10%</button>
+        </div>
     </div>
-    <div id="lose-screen">
+
+    <div id="final-win-screen" class="screen">
+        <h2 style="color: #0ff; text-shadow: 0 0 20px #0ff;">ЛЕГЕНДА КАФЕ!</h2>
+        <p>Ти пройшов усі 3 рівні і не розлив жодної кави.</p>
+        <button onclick="alert('ТВІЙ СУПЕР ПРОМОКОД: BOSS50! Насолоджуйся!'); location.reload();" style="color: #0ff; border-color: #0ff; margin-top: 20px;">👑 Забрати знижку 50%</button>
+    </div>
+
+    <div id="lose-screen" class="screen">
         <h2 style="color: #f00; text-shadow: 0 0 20px #f00;">ЗВІЛЬНЕНО!</h2>
         <button onclick="location.reload()">Спробувати ще раз</button>
     </div>
@@ -52,8 +63,8 @@
         },
         {
             "tileSize": 30,
-            "waiterSpeed": 2.5,
-            "enemySpeed": 1.8,
+            "waiterSpeed": 1.9,
+            "enemySpeed": 1.7,
             "waiterStart": {"x": 1.5, "y": 1.5},
             "enemies": [
                 {"x": 11.5, "y": 7.5, "color": "#ff0000", "dir": "up"},
@@ -81,8 +92,8 @@
         },
         {
             "tileSize": 24,
-            "waiterSpeed": 2.8,
-            "enemySpeed": 2.2,
+            "waiterSpeed": 2.0,
+            "enemySpeed": 1.9,
             "waiterStart": {"x": 1.5, "y": 1.5},
             "enemies": [
                 {"x": 13.5, "y": 8.5, "color": "#ff0000", "dir": "up"},
