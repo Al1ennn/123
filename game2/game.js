@@ -1,8 +1,7 @@
-// 1. СПОЧАТКУ ЧИТАЄМО JSON
+// --- ЧИТАЄМО ТА РОЗБИРАЄМО JSON ---
 const jsonText = document.getElementById('level-data').textContent;
 const levelConfig = JSON.parse(jsonText); 
 
-// 2. СТВОРЮЄМО КОНСТАНТИ З JSON
 const TILE_SIZE = levelConfig.tileSize;
 const WAITER_SPEED = levelConfig.waiterSpeed;
 const ENEMY_SPEED = levelConfig.enemySpeed;
@@ -13,7 +12,7 @@ const MAP_HEIGHT = INITIAL_MAP.length;
 const CANVAS_WIDTH = MAP_WIDTH * TILE_SIZE;
 const CANVAS_HEIGHT = MAP_HEIGHT * TILE_SIZE;
 
-// 3. І ТІЛЬКИ ТЕПЕР НАЛАШТОВУЄМО CANVAS
+// --- НАЛАШТУВАННЯ CANVAS ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.querySelector('#score span');
@@ -35,6 +34,8 @@ for (let r = 0; r < MAP_HEIGHT; r++) {
 
 // --- КАРТИНКИ ОФІЦІАНТА ---
 const sprites = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
+
+// ⚠️ ПЕРЕВІР, ЧИ ПРАВИЛЬНІ НАЗВИ ТВОЇХ ФАЙЛІВ ТУТ:
 sprites.up.src = 'up.webp';       
 sprites.down.src = 'down.webp';   
 sprites.left.src = 'left.webp';   
@@ -49,14 +50,13 @@ const waiter = {
 };
 
 // --- ВОРОГИ ---
-const possibleDirections = ['up', 'down', 'left', 'right'];
 const enemiesList = [
-    { x: TILE_SIZE * 9.5, y: TILE_SIZE * 7.5, color: '#ff0000', dir: 'up', size: TILE_SIZE * 0.8 },
-    { x: TILE_SIZE * 10.5, y: TILE_SIZE * 7.5, color: '#ff8800', dir: 'left', size: TILE_SIZE * 0.8 },
-    { x: TILE_SIZE * 11.5, y: TILE_SIZE * 7.5, color: '#aa00ff', dir: 'right', size: TILE_SIZE * 0.8 }
+    { x: TILE_SIZE * 9.5, y: TILE_SIZE * 7.5, color: '#ff0000', dir: 'up', size: TILE_SIZE * 0.8, started: false },
+    { x: TILE_SIZE * 10.5, y: TILE_SIZE * 7.5, color: '#ff8800', dir: 'left', size: TILE_SIZE * 0.8, started: false },
+    { x: TILE_SIZE * 11.5, y: TILE_SIZE * 7.5, color: '#aa00ff', dir: 'right', size: TILE_SIZE * 0.8, started: false }
 ];
 
-// --- МАЛЮВАННЯ КАРТИ (СУЦІЛЬНІ СТІНИ) ---
+// --- МАЛЮВАННЯ КАРТИ ---
 function drawMap() {
     for (let r = 0; r < MAP_HEIGHT; r++) {
         for (let c = 0; c < MAP_WIDTH; c++) {
@@ -65,8 +65,8 @@ function drawMap() {
             let y = r * TILE_SIZE;
 
             if (tile === 1) { 
-                ctx.fillStyle = '#1e003b'; // Темно-фіолетовий колір стін
-                ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1); // +1 прибирає щілини (сітку)
+                ctx.fillStyle = '#1e003b'; // Суцільні стіни
+                ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1);
             } else if (tile === 0) { 
                 ctx.fillStyle = '#ff0'; 
                 ctx.beginPath();
@@ -92,9 +92,9 @@ function drawWaiter() {
     }
 }
 
-function isCollision(x, y, isPlayer) {
-    const physicalSize = isPlayer ? (TILE_SIZE * 0.45) : (TILE_SIZE * 0.8);
-    const collisionRadius = physicalSize / 2;
+// Функція зіткнень (Тепер потрібна ТІЛЬКИ для гравця)
+function isCollision(x, y) {
+    const collisionRadius = (TILE_SIZE * 0.45) / 2; // Зменшений хітбокс гравця
     
     const pointsToTest = [
         { x: x - collisionRadius, y: y - collisionRadius }, { x: x + collisionRadius, y: y - collisionRadius },
@@ -110,59 +110,37 @@ function isCollision(x, y, isPlayer) {
     return false;
 }
 
-function moveEnemies() {
-    for (let enemy of enemiesList) {
-        let nextX = enemy.x;
-        let nextY = enemy.y;
+// ПЛАВНИЙ РУХ ГРАВЦЯ
+function moveWaiter() {
+    let dx = 0;
+    let dy = 0;
 
-        // Визначаємо наступний крок
-        if (enemy.dir === 'up') nextY -= ENEMY_SPEED;
-        if (enemy.dir === 'down') nextY += ENEMY_SPEED;
-        if (enemy.dir === 'left') nextX -= ENEMY_SPEED;
-        if (enemy.dir === 'right') nextX += ENEMY_SPEED;
+    if (controls.up) { dy = -WAITER_SPEED; waiter.dir = 'up'; }
+    else if (controls.down) { dy = WAITER_SPEED; waiter.dir = 'down'; }
+    else if (controls.left) { dx = -WAITER_SPEED; waiter.dir = 'left'; }
+    else if (controls.right) { dx = WAITER_SPEED; waiter.dir = 'right'; }
 
-        // Якщо попереду стіна — час подумати і повернути
-        if (isCollision(nextX, nextY, false)) {
-            
-            // 1. Ставимо ворога ідеально по центру плитки
-            let gridX = Math.floor(enemy.x / TILE_SIZE);
-            let gridY = Math.floor(enemy.y / TILE_SIZE);
-            enemy.x = gridX * TILE_SIZE + TILE_SIZE / 2;
-            enemy.y = gridY * TILE_SIZE + TILE_SIZE / 2;
+    let centerX = Math.floor(waiter.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+    let centerY = Math.floor(waiter.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+    const snapSpeed = WAITER_SPEED * 0.8;
 
-            // 2. Скануємо масив карти: шукаємо всі ВІДКРИТІ проходи
-            let validDirs = [];
-            if (gridY > 0 && gameMap[gridY-1][gridX] !== 1) validDirs.push('up');
-            if (gridY < MAP_HEIGHT-1 && gameMap[gridY+1][gridX] !== 1) validDirs.push('down');
-            if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
-            if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
+    if (dx !== 0) {
+        if (Math.abs(waiter.y - centerY) <= snapSpeed) waiter.y = centerY;
+        else if (waiter.y < centerY) waiter.y += snapSpeed;
+        else if (waiter.y > centerY) waiter.y -= snapSpeed;
 
-            // 3. Визначаємо напрямок "назад" (щоб не ходити туди-сюди)
-            let opposite = '';
-            if (enemy.dir === 'up') opposite = 'down';
-            if (enemy.dir === 'down') opposite = 'up';
-            if (enemy.dir === 'left') opposite = 'right';
-            if (enemy.dir === 'right') opposite = 'left';
+        if (!isCollision(waiter.x + dx, waiter.y)) waiter.x += dx;
+    }
 
-            // 4. Прибираємо шлях "назад" з доступних варіантів
-            let optionsWithoutBack = validDirs.filter(d => d !== opposite);
+    if (dy !== 0) {
+        if (Math.abs(waiter.x - centerX) <= snapSpeed) waiter.x = centerX;
+        else if (waiter.x < centerX) waiter.x += snapSpeed;
+        else if (waiter.x > centerX) waiter.x -= snapSpeed;
 
-            // 5. Вибираємо новий шлях
-            if (optionsWithoutBack.length > 0) {
-                // Вибираємо випадковий відкритий шлях (тільки вперед або вбік)
-                enemy.dir = optionsWithoutBack[Math.floor(Math.random() * optionsWithoutBack.length)];
-            } else if (validDirs.length > 0) {
-                // Якщо крім "назад" немає інших шляхів — це тупик. Розвертаємось.
-                enemy.dir = validDirs[0]; 
-            }
-            
-        } else {
-            // Якщо стіни немає — спокійно йдемо далі
-            enemy.x = nextX;
-            enemy.y = nextY;
-        }
+        if (!isCollision(waiter.x, waiter.y + dy)) waiter.y += dy;
     }
 }
+
 function collectMoney() {
     let gridX = Math.floor(waiter.x / TILE_SIZE);
     let gridY = Math.floor(waiter.y / TILE_SIZE);
@@ -188,13 +166,12 @@ function drawEnemies() {
     }
 }
 
+// ІДЕАЛЬНИЙ РУХ ВОРОГІВ (без застрягань)
 function moveEnemies() {
     for (let enemy of enemiesList) {
-        // Дізнаємося, в якій клітинці ми зараз
         let gridX = Math.floor(enemy.x / TILE_SIZE);
         let gridY = Math.floor(enemy.y / TILE_SIZE);
 
-        // 1. ЗАХИСТ НА СТАРТІ: Якщо ворога спавнить обличчям у стіну, міняємо напрямок у першу ж секунду
         if (!enemy.started) {
             enemy.started = true;
             let validDirs = [];
@@ -203,63 +180,47 @@ function moveEnemies() {
             if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
             if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
             
-            if (!validDirs.includes(enemy.dir) && validDirs.length > 0) {
-                enemy.dir = validDirs[0]; 
-            }
+            if (!validDirs.includes(enemy.dir) && validDirs.length > 0) enemy.dir = validDirs[0]; 
         }
 
         let prevX = enemy.x;
         let prevY = enemy.y;
 
-        // 2. РУХ
         if (enemy.dir === 'up') enemy.y -= ENEMY_SPEED;
         else if (enemy.dir === 'down') enemy.y += ENEMY_SPEED;
         else if (enemy.dir === 'left') enemy.x -= ENEMY_SPEED;
         else if (enemy.dir === 'right') enemy.x += ENEMY_SPEED;
 
-        // 3. ІДЕАЛЬНА ЛОГІКА ПАКМЕНА: Вираховуємо точний центр поточної клітинки
         let tileCenterX = gridX * TILE_SIZE + TILE_SIZE / 2;
         let tileCenterY = gridY * TILE_SIZE + TILE_SIZE / 2;
-
         let crossedCenter = false;
         
-        // Перевіряємо, чи перетнув ворог центр клітинки в цьому кадрі
         if (enemy.dir === 'left' || enemy.dir === 'right') {
             if ((prevX < tileCenterX && enemy.x >= tileCenterX) || (prevX > tileCenterX && enemy.x <= tileCenterX)) crossedCenter = true;
         } else {
             if ((prevY < tileCenterY && enemy.y >= tileCenterY) || (prevY > tileCenterY && enemy.y <= tileCenterY)) crossedCenter = true;
         }
 
-        // 4. ПРИЙНЯТТЯ РІШЕНЬ (ТІЛЬКИ В ЦЕНТРІ)
         if (crossedCenter) {
-            // "Примагнічуємо" ворога ідеально в центр, щоб не було зміщень
             enemy.x = tileCenterX;
             enemy.y = tileCenterY;
 
-            // Дивимося, які шляхи відкриті з цього перехрестя
             let validDirs = [];
             if (gridY > 0 && gameMap[gridY-1][gridX] !== 1) validDirs.push('up');
             if (gridY < MAP_HEIGHT-1 && gameMap[gridY+1][gridX] !== 1) validDirs.push('down');
             if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
             if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
 
-            // Вороги не можуть миттєво розвернутися (тільки якщо це тупик)
             let opposite = '';
             if (enemy.dir === 'up') opposite = 'down';
             if (enemy.dir === 'down') opposite = 'up';
             if (enemy.dir === 'left') opposite = 'right';
             if (enemy.dir === 'right') opposite = 'left';
 
-            // Відкидаємо шлях назад
             let options = validDirs.filter(d => d !== opposite);
 
-            if (options.length > 0) {
-                // Вибираємо випадковий шлях вперед або вбік
-                enemy.dir = options[Math.floor(Math.random() * options.length)];
-            } else if (validDirs.length > 0) {
-                // Якщо крім шляху назад нічого немає (тупик) - розвертаємось
-                enemy.dir = validDirs[0]; 
-            }
+            if (options.length > 0) enemy.dir = options[Math.floor(Math.random() * options.length)];
+            else if (validDirs.length > 0) enemy.dir = validDirs[0]; 
         }
     }
 }
@@ -280,7 +241,8 @@ function checkEnemyHit() {
 function gameLoop() {
     if (!gameActive) return; 
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    moveWaiter();
+    
+    moveWaiter(); // <-- Вона повернулася!
     moveEnemies();
     collectMoney();
     checkEnemyHit();
