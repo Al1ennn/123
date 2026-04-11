@@ -111,39 +111,46 @@ function isCollision(x, y, isPlayer) {
 }
 
 function moveWaiter() {
-    let nextX = waiter.x;
-    let nextY = waiter.y;
-    let centerX = Math.floor(waiter.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
-    let centerY = Math.floor(waiter.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+    let dx = 0;
+    let dy = 0;
 
-    // Швидкість вирівнювання (магніт)
-    const snapSpeed = 2; 
+    // 1. ПРАВИЛО ПАКМЕНА: Блокуємо діагоналі (використовуємо else if)
+    // Гравець може йти тільки в одну сторону одночасно
+    if (controls.up) { dy = -WAITER_SPEED; waiter.dir = 'up'; }
+    else if (controls.down) { dy = WAITER_SPEED; waiter.dir = 'down'; }
+    else if (controls.left) { dx = -WAITER_SPEED; waiter.dir = 'left'; }
+    else if (controls.right) { dx = WAITER_SPEED; waiter.dir = 'right'; }
 
-    if (controls.up || controls.down) {
-        // Якщо йдемо вгору/вниз, плавно підтягуємо до центру по X
-        if (Math.abs(waiter.x - centerX) < snapSpeed) waiter.x = centerX;
-        else if (waiter.x < centerX) waiter.x += snapSpeed;
-        else if (waiter.x > centerX) waiter.x -= snapSpeed;
-        
-        if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; }
-        if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; }
+    // 2. РУХ ПО ГОРИЗОНТАЛІ (Вліво / Вправо)
+    if (dx !== 0) {
+        if (!isCollision(waiter.x + dx, waiter.y, true)) {
+            waiter.x += dx; // Робимо крок вперед
+            
+            // ПЛАВНЕ АВТОЦЕНТРУВАННЯ: Якщо ми трохи криво зайшли в коридор,
+            // гра сама плавно підтягне нас до центру по вертикалі (Y)
+            let centerY = Math.floor(waiter.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+            
+            // Підтягуємо зі швидкістю, меншою за основну, щоб це виглядало як м'яке ковзання
+            let snapPull = WAITER_SPEED / 1.5; 
+            if (waiter.y < centerY) waiter.y = Math.min(centerY, waiter.y + snapPull);
+            if (waiter.y > centerY) waiter.y = Math.max(centerY, waiter.y - snapPull);
+        }
     }
-
-    if (controls.left || controls.right) {
-        // Якщо йдемо вліво/вправо, плавно підтягуємо до центру по Y
-        if (Math.abs(waiter.y - centerY) < snapSpeed) waiter.y = centerY;
-        else if (waiter.y < centerY) waiter.y += snapSpeed;
-        else if (waiter.y > centerY) waiter.y -= snapSpeed;
-
-        if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
-        if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
+    
+    // 3. РУХ ПО ВЕРТИКАЛІ (Вгору / Вниз)
+    if (dy !== 0) {
+        if (!isCollision(waiter.x, waiter.y + dy, true)) {
+            waiter.y += dy; // Робимо крок вперед
+            
+            // ПЛАВНЕ АВТОЦЕНТРУВАННЯ по горизонталі (X)
+            let centerX = Math.floor(waiter.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+            
+            let snapPull = WAITER_SPEED / 1.5;
+            if (waiter.x < centerX) waiter.x = Math.min(centerX, waiter.x + snapPull);
+            if (waiter.x > centerX) waiter.x = Math.max(centerX, waiter.x - snapPull);
+        }
     }
-
-    // Перевірка зіткнень залишається
-    if (!isCollision(nextX, waiter.y, true)) waiter.x = nextX;
-    if (!isCollision(waiter.x, nextY, true)) waiter.y = nextY;
 }
-
 function collectMoney() {
     let gridX = Math.floor(waiter.x / TILE_SIZE);
     let gridY = Math.floor(waiter.y / TILE_SIZE);
