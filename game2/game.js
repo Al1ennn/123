@@ -102,15 +102,27 @@ function collectMoney() {
     let gridX = Math.floor(waiter.x / TILE_SIZE);
     let gridY = Math.floor(waiter.y / TILE_SIZE);
 
-    if (gameMap[gridY][gridX] === 0) {
-        gameMap[gridY][gridX] = 2; // Змінюємо на "порожню підлогу"
-        waiter.score += 1; // Чайові $1
-        scoreSpan.innerText = waiter.score; // Оновлюємо UI
+    // Перевірка, щоб офіціант не вийшов за межі масиву
+    if (gridY >= 0 && gridY < MAP_HEIGHT && gridX >= 0 && gridX < MAP_WIDTH) {
+        if (gameMap[gridY][gridX] === 0) {
+            gameMap[gridY][gridX] = 2; 
+            waiter.score += 1; 
+            scoreSpan.innerText = waiter.score; 
+
+            // ПЕРЕВІРКА НА ПЕРЕМОГУ
+            if (waiter.score === totalCoins) {
+                gameActive = false; // Зупиняємо гру
+                winScreen.style.display = 'flex'; // Показуємо екран перемоги
+            }
+        }
     }
 }
 
 // Основний ігровий цикл
 function gameLoop() {
+    // Якщо гра закінчилася (gameActive === false), просто припиняємо малювати нові кадри
+    if (!gameActive) return; 
+
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     
     moveWaiter();
