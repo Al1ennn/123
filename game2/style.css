@@ -30,78 +30,50 @@ canvas {
     box-shadow: 0 0 20px #f0f;
     
     /* --- ФІКС ЧІТКОСТІ ПІКСЕЛІВ --- */
-    /* Ця властивість змушує браузер зберігати чіткі краї пікселів при масштабуванні */
-    image-rendering: pixelated; /* Стандартний сучасний спосіб */
-    image-rendering: -moz-crisp-edges; /* Для старих Firefox */
-    image-rendering: -webkit-crisp-edges; /* Для старих Safari/Webkit */
-    image-rendering: crisp-edges; /* Для інших старих браузерів */
+    image-rendering: pixelated; 
+    image-rendering: -moz-crisp-edges; 
+    image-rendering: -webkit-crisp-edges; 
+    image-rendering: crisp-edges; 
 }
 
-/* Стилі для екранів перемоги/програшу */
-#win-screen, #lose-screen {
+/* --- ОНОВЛЕНІ СТИЛІ ДЛЯ ВСІХ ВІКОН (ПЕРЕМОГА, ПРОГРАШ, ФІНАЛ) --- */
+.screen {
     position: absolute;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.85);
-    display: none;
+    display: none; /* Приховано за замовчуванням */
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 100;
 }
 
-#win-screen h2, #lose-screen h2 {
-    font-size: 4em;
-    margin: 0;
-}
-
-#win-screen h2 {
-    color: #0f0;
-    text-shadow: 0 0 20px #0f0;
-}
-
-#lose-screen h2 {
-    color: #f00;
-    text-shadow: 0 0 20px #f00;
-}
-
-#win-screen p, #lose-screen p {
+.screen p {
     font-size: 1.5em;
     color: #fff;
 }
 
-#win-screen button, #lose-screen button {
-    margin-top: 20px;
+/* Універсальний стиль для всіх кнопок */
+.screen button {
     padding: 15px 30px;
     font-size: 1.2em;
     font-family: inherit;
     font-weight: bold;
-    background-color: transparent;
+    background-color: #000;
     cursor: pointer;
     text-transform: uppercase;
     transition: all 0.2s;
+    border-width: 3px;
+    border-style: solid;
+    margin-top: 10px;
 }
 
-#win-screen button {
-    color: #f0f;
-    border: 3px solid #f0f;
-}
-
-#win-screen button:hover {
-    background-color: #f0f;
-    color: #000;
-    box-shadow: 0 0 20px #f0f;
-}
-
-#lose-screen button {
-    color: #f00;
-    border: 3px solid #f00;
-}
-
-#lose-screen button:hover {
-    background-color: #f00;
-    color: #000;
-    box-shadow: 0 0 20px #f00;
+/* Магія: при наведенні кнопка світиться тим самим кольором, що й її рамка */
+.screen button:hover {
+    background-color: currentColor; 
+    color: #000 !important;
+    box-shadow: 0 0 20px currentColor;
 }
