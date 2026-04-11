@@ -107,6 +107,7 @@ function moveWaiter() {
     }
 }
 // Завантажуємо всі окремі картинки в один зручний об'єкт
+// Завантажуємо всі окремі картинки в один зручний об'єкт
 const sprites = {
     up: new Image(),
     down: new Image(),
@@ -116,14 +117,13 @@ const sprites = {
     rightWalk: new Image()
 };
 
-// ВПИШИ ТУТ СВОЇ РЕАЛЬНІ НАЗВИ ФАЙЛІВ!
-sprites.up.src = 'walk_up.webp';          // йде прямо (від нас)
-sprites.down.src = 'look_down.webp';      // дивиться до нас (назад)
-sprites.leftStand.src = 'stand_left.webp';// просто стоїть вліво
-sprites.leftWalk.src = 'walk_left.webp';  // йде наліво
-sprites.rightStand.src = 'stand_right.webp';// просто стоїть вправо
-sprites.rightWalk.src = 'walk_right.webp';// йде направо
-
+// ЗМІНЮЄМО .webp НА .jpg
+sprites.up.src = 'walk_up.jpg';          
+sprites.down.src = 'look_down.jpg';      
+sprites.leftStand.src = 'stand_left.jpg';
+sprites.leftWalk.src = 'walk_left.jpg';  
+sprites.rightStand.src = 'stand_right.jpg';
+sprites.rightWalk.src = 'walk_right.jpg';
 // Оновлюємо стан офіціанта (додаємо статус "чи рухається він зараз")
 const waiter = {
     x: TILE_SIZE * 1.5,
