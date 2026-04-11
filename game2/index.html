@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Cafe Waiter - Prototype</title>
+    <title>Retro Cafe Waiter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,18 +12,40 @@
         <div id="score">Зібрано чайових: $<span>0</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
-    <canvas id="gameCanvas"></canvas>
     
     <div id="win-screen">
-        <h2>УСІ ЧАЙОВІ ЗІБРАНО!</h2>
-        <p>Ти найкращий офіціант зміни.</p>
+        <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">УСІ ЧАЙОВІ ЗІБРАНО!</h2>
         <button onclick="location.reload()">Грати ще раз</button>
     </div>
+    <div id="lose-screen">
+        <h2 style="color: #f00; text-shadow: 0 0 20px #f00;">ЗВІЛЬНЕНО!</h2>
+        <button onclick="location.reload()">Спробувати ще раз</button>
+    </div>
+
+    <script id="level-data" type="application/json">
+    {
+        "tileSize": 36,
+        "waiterSpeed": 3,
+        "enemySpeed": 2,
+        "map": [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,0,1,1,1,2,2,2,1,1,1,0,1,1,1,1,1],
+            [1,0,0,0,0,0,1,0,0,2,2,2,0,0,1,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+            [1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ]
+    }
+    </script>
     
-    <script src="game-constants.js"></script>
-    <script src="enemies.js"></script>
     <script src="controls.js"></script>
     <script src="game.js"></script>
-    
 </body>
 </html>
