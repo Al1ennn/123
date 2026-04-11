@@ -45,20 +45,23 @@ function drawWaiter() {
 }
 
 function moveWaiter() {
-    // direction отримуємо з controls.js
-    if (!controls.direction) return;
-
     let nextX = waiter.x;
     let nextY = waiter.y;
 
-    if (controls.direction === 'up') nextY -= WAITER_SPEED;
-    if (controls.direction === 'down') nextY += WAITER_SPEED;
-    if (controls.direction === 'left') nextX -= WAITER_SPEED;
-    if (controls.direction === 'right') nextX += WAITER_SPEED;
+    // Додаємо швидкість залежно від того, які кнопки зараз затиснуті
+    if (controls.up) nextY -= WAITER_SPEED;
+    if (controls.down) nextY += WAITER_SPEED;
+    if (controls.left) nextX -= WAITER_SPEED;
+    if (controls.right) nextX += WAITER_SPEED;
 
-    // Перевірка зіткнень зі стінами
-    if (!isCollision(nextX, nextY)) {
+    // Роздільна перевірка зіткнень (щоб офіціант міг ковзати вздовж стін)
+    // Перевіряємо рух по горизонталі (X)
+    if (!isCollision(nextX, waiter.y)) {
         waiter.x = nextX;
+    }
+    
+    // Перевіряємо рух по вертикалі (Y)
+    if (!isCollision(waiter.x, nextY)) {
         waiter.y = nextY;
     }
 }
