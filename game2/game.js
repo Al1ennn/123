@@ -72,7 +72,33 @@ function moveWaiter() {
         waiter.y = nextY;
     }
 }
+// Завантажуємо всі окремі картинки в один зручний об'єкт
+const sprites = {
+    up: new Image(),
+    down: new Image(),
+    leftStand: new Image(),
+    leftWalk: new Image(),
+    rightStand: new Image(),
+    rightWalk: new Image()
+};
 
+// ВПИШИ ТУТ СВОЇ РЕАЛЬНІ НАЗВИ ФАЙЛІВ!
+sprites.up.src = 'walk_up.webp';          // йде прямо (від нас)
+sprites.down.src = 'look_down.webp';      // дивиться до нас (назад)
+sprites.leftStand.src = 'stand_left.webp';// просто стоїть вліво
+sprites.leftWalk.src = 'walk_left.webp';  // йде наліво
+sprites.rightStand.src = 'stand_right.webp';// просто стоїть вправо
+sprites.rightWalk.src = 'walk_right.webp';// йде направо
+
+// Оновлюємо стан офіціанта (додаємо статус "чи рухається він зараз")
+const waiter = {
+    x: TILE_SIZE * 1.5,
+    y: TILE_SIZE * 1.5,
+    size: TILE_SIZE * 0.8,
+    score: 0,
+    dir: 'right', // Напрямок
+    isMoving: false // Нова змінна: чи натиснута зараз кнопка?
+};
 // Функція перевірки зіткнення
 function isCollision(x, y) {
     // Радіус для перевірки зіткнень, щоб офіціант не чіплявся краєм
