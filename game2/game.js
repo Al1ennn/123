@@ -18,30 +18,26 @@ for (let r = 0; r < MAP_HEIGHT; r++) {
     }
 }
 
-// --- ЗАВАНТАЖЕННЯ КАРТИНОК ---
+// --- ЗАВАНТАЖЕННЯ 4-х КАРТИНОК (.webp) ---
 const sprites = {
     up: new Image(),
     down: new Image(),
-    leftStand: new Image(),
-    leftWalk: new Image(),
-    rightStand: new Image(),
-    rightWalk: new Image()
+    left: new Image(),
+    right: new Image()
 };
 
-sprites.up.src = 'walk_up.jpg';          
-sprites.down.src = 'look_down.jpg';      
-sprites.leftStand.src = 'stand_left.jpg';
-sprites.leftWalk.src = 'walk_left.jpg';  
-sprites.rightStand.src = 'stand_right.jpg';
-sprites.rightWalk.src = 'walk_right.jpg';
+// ⚠️ УВАГА: ВПИШИ ТУТ СВОЇ РЕАЛЬНІ НАЗВИ ФАЙЛІВ!
+sprites.up.src = 'up.webp';       // Спиною до нас (йде вгору)
+sprites.down.src = 'down.webp';   // Обличчям до нас (йде вниз)
+sprites.left.src = 'left.webp';   // Дивиться вліво
+sprites.right.src = 'right.webp'; // Дивиться вправо
 
 const waiter = {
     x: TILE_SIZE * 1.5,
     y: TILE_SIZE * 1.5,
     size: TILE_SIZE * 0.8,
     score: 0,
-    dir: 'right', 
-    isMoving: false 
+    dir: 'right' // Початковий напрямок
 };
 
 function drawMap() {
@@ -69,16 +65,13 @@ function drawMap() {
 function drawWaiter() {
     let currentImage;
 
-    if (waiter.dir === 'up') {
-        currentImage = sprites.up;
-    } else if (waiter.dir === 'down') {
-        currentImage = sprites.down;
-    } else if (waiter.dir === 'left') {
-        currentImage = waiter.isMoving ? sprites.leftWalk : sprites.leftStand;
-    } else if (waiter.dir === 'right') {
-        currentImage = waiter.isMoving ? sprites.rightWalk : sprites.rightStand;
-    }
+    // Вибираємо картинку залежно від напрямку
+    if (waiter.dir === 'up') currentImage = sprites.up;
+    else if (waiter.dir === 'down') currentImage = sprites.down;
+    else if (waiter.dir === 'left') currentImage = sprites.left;
+    else if (waiter.dir === 'right') currentImage = sprites.right;
 
+    // Якщо картинка завантажилась успішно - малюємо її
     if (currentImage && currentImage.complete && currentImage.naturalWidth !== 0) {
         ctx.drawImage(
             currentImage,
@@ -88,6 +81,7 @@ function drawWaiter() {
             waiter.size
         );
     } else {
+        // Якщо файл ще вантажиться або назва вказана неправильно - малюємо квадрат
         ctx.fillStyle = '#0f0';
         ctx.fillRect(waiter.x - waiter.size / 2, waiter.y - waiter.size / 2, waiter.size, waiter.size);
     }
@@ -116,12 +110,11 @@ function isCollision(x, y, objectSize) {
 function moveWaiter() {
     let nextX = waiter.x;
     let nextY = waiter.y;
-    waiter.isMoving = false; // Скидаємо статус руху кожен кадр
 
-    if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; waiter.isMoving = true; }
-    if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; waiter.isMoving = true; }
-    if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; waiter.isMoving = true; }
-    if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; waiter.isMoving = true; }
+    if (controls.up) { nextY -= WAITER_SPEED; waiter.dir = 'up'; }
+    if (controls.down) { nextY += WAITER_SPEED; waiter.dir = 'down'; }
+    if (controls.left) { nextX -= WAITER_SPEED; waiter.dir = 'left'; }
+    if (controls.right) { nextX += WAITER_SPEED; waiter.dir = 'right'; }
 
     if (!isCollision(nextX, waiter.y, waiter.size)) waiter.x = nextX;
     if (!isCollision(waiter.x, nextY, waiter.size)) waiter.y = nextY;
