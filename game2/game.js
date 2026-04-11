@@ -110,44 +110,56 @@ function isCollision(x, y, isPlayer) {
     return false;
 }
 
-function moveWaiter() {
-    let dx = 0;
-    let dy = 0;
+function moveEnemies() {
+    for (let enemy of enemiesList) {
+        let nextX = enemy.x;
+        let nextY = enemy.y;
 
-    // 1. ПРАВИЛО ПАКМЕНА: Блокуємо діагоналі (використовуємо else if)
-    // Гравець може йти тільки в одну сторону одночасно
-    if (controls.up) { dy = -WAITER_SPEED; waiter.dir = 'up'; }
-    else if (controls.down) { dy = WAITER_SPEED; waiter.dir = 'down'; }
-    else if (controls.left) { dx = -WAITER_SPEED; waiter.dir = 'left'; }
-    else if (controls.right) { dx = WAITER_SPEED; waiter.dir = 'right'; }
+        // Визначаємо наступний крок
+        if (enemy.dir === 'up') nextY -= ENEMY_SPEED;
+        if (enemy.dir === 'down') nextY += ENEMY_SPEED;
+        if (enemy.dir === 'left') nextX -= ENEMY_SPEED;
+        if (enemy.dir === 'right') nextX += ENEMY_SPEED;
 
-    // 2. РУХ ПО ГОРИЗОНТАЛІ (Вліво / Вправо)
-    if (dx !== 0) {
-        if (!isCollision(waiter.x + dx, waiter.y, true)) {
-            waiter.x += dx; // Робимо крок вперед
+        // Якщо попереду стіна — час подумати і повернути
+        if (isCollision(nextX, nextY, false)) {
             
-            // ПЛАВНЕ АВТОЦЕНТРУВАННЯ: Якщо ми трохи криво зайшли в коридор,
-            // гра сама плавно підтягне нас до центру по вертикалі (Y)
-            let centerY = Math.floor(waiter.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+            // 1. Ставимо ворога ідеально по центру плитки
+            let gridX = Math.floor(enemy.x / TILE_SIZE);
+            let gridY = Math.floor(enemy.y / TILE_SIZE);
+            enemy.x = gridX * TILE_SIZE + TILE_SIZE / 2;
+            enemy.y = gridY * TILE_SIZE + TILE_SIZE / 2;
+
+            // 2. Скануємо масив карти: шукаємо всі ВІДКРИТІ проходи
+            let validDirs = [];
+            if (gridY > 0 && gameMap[gridY-1][gridX] !== 1) validDirs.push('up');
+            if (gridY < MAP_HEIGHT-1 && gameMap[gridY+1][gridX] !== 1) validDirs.push('down');
+            if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
+            if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
+
+            // 3. Визначаємо напрямок "назад" (щоб не ходити туди-сюди)
+            let opposite = '';
+            if (enemy.dir === 'up') opposite = 'down';
+            if (enemy.dir === 'down') opposite = 'up';
+            if (enemy.dir === 'left') opposite = 'right';
+            if (enemy.dir === 'right') opposite = 'left';
+
+            // 4. Прибираємо шлях "назад" з доступних варіантів
+            let optionsWithoutBack = validDirs.filter(d => d !== opposite);
+
+            // 5. Вибираємо новий шлях
+            if (optionsWithoutBack.length > 0) {
+                // Вибираємо випадковий відкритий шлях (тільки вперед або вбік)
+                enemy.dir = optionsWithoutBack[Math.floor(Math.random() * optionsWithoutBack.length)];
+            } else if (validDirs.length > 0) {
+                // Якщо крім "назад" немає інших шляхів — це тупик. Розвертаємось.
+                enemy.dir = validDirs[0]; 
+            }
             
-            // Підтягуємо зі швидкістю, меншою за основну, щоб це виглядало як м'яке ковзання
-            let snapPull = WAITER_SPEED / 1.5; 
-            if (waiter.y < centerY) waiter.y = Math.min(centerY, waiter.y + snapPull);
-            if (waiter.y > centerY) waiter.y = Math.max(centerY, waiter.y - snapPull);
-        }
-    }
-    
-    // 3. РУХ ПО ВЕРТИКАЛІ (Вгору / Вниз)
-    if (dy !== 0) {
-        if (!isCollision(waiter.x, waiter.y + dy, true)) {
-            waiter.y += dy; // Робимо крок вперед
-            
-            // ПЛАВНЕ АВТОЦЕНТРУВАННЯ по горизонталі (X)
-            let centerX = Math.floor(waiter.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
-            
-            let snapPull = WAITER_SPEED / 1.5;
-            if (waiter.x < centerX) waiter.x = Math.min(centerX, waiter.x + snapPull);
-            if (waiter.x > centerX) waiter.x = Math.max(centerX, waiter.x - snapPull);
+        } else {
+            // Якщо стіни немає — спокійно йдемо далі
+            enemy.x = nextX;
+            enemy.y = nextY;
         }
     }
 }
