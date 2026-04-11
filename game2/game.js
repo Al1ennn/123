@@ -190,21 +190,76 @@ function drawEnemies() {
 
 function moveEnemies() {
     for (let enemy of enemiesList) {
-        let nextX = enemy.x;
-        let nextY = enemy.y;
+        // Дізнаємося, в якій клітинці ми зараз
+        let gridX = Math.floor(enemy.x / TILE_SIZE);
+        let gridY = Math.floor(enemy.y / TILE_SIZE);
 
-        if (enemy.dir === 'up') nextY -= ENEMY_SPEED;
-        if (enemy.dir === 'down') nextY += ENEMY_SPEED;
-        if (enemy.dir === 'left') nextX -= ENEMY_SPEED;
-        if (enemy.dir === 'right') nextX += ENEMY_SPEED;
+        // 1. ЗАХИСТ НА СТАРТІ: Якщо ворога спавнить обличчям у стіну, міняємо напрямок у першу ж секунду
+        if (!enemy.started) {
+            enemy.started = true;
+            let validDirs = [];
+            if (gridY > 0 && gameMap[gridY-1][gridX] !== 1) validDirs.push('up');
+            if (gridY < MAP_HEIGHT-1 && gameMap[gridY+1][gridX] !== 1) validDirs.push('down');
+            if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
+            if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
+            
+            if (!validDirs.includes(enemy.dir) && validDirs.length > 0) {
+                enemy.dir = validDirs[0]; 
+            }
+        }
 
-        if (isCollision(nextX, nextY, false)) {
-            enemy.dir = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
-            enemy.x = Math.floor(enemy.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
-            enemy.y = Math.floor(enemy.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+        let prevX = enemy.x;
+        let prevY = enemy.y;
+
+        // 2. РУХ
+        if (enemy.dir === 'up') enemy.y -= ENEMY_SPEED;
+        else if (enemy.dir === 'down') enemy.y += ENEMY_SPEED;
+        else if (enemy.dir === 'left') enemy.x -= ENEMY_SPEED;
+        else if (enemy.dir === 'right') enemy.x += ENEMY_SPEED;
+
+        // 3. ІДЕАЛЬНА ЛОГІКА ПАКМЕНА: Вираховуємо точний центр поточної клітинки
+        let tileCenterX = gridX * TILE_SIZE + TILE_SIZE / 2;
+        let tileCenterY = gridY * TILE_SIZE + TILE_SIZE / 2;
+
+        let crossedCenter = false;
+        
+        // Перевіряємо, чи перетнув ворог центр клітинки в цьому кадрі
+        if (enemy.dir === 'left' || enemy.dir === 'right') {
+            if ((prevX < tileCenterX && enemy.x >= tileCenterX) || (prevX > tileCenterX && enemy.x <= tileCenterX)) crossedCenter = true;
         } else {
-            enemy.x = nextX;
-            enemy.y = nextY;
+            if ((prevY < tileCenterY && enemy.y >= tileCenterY) || (prevY > tileCenterY && enemy.y <= tileCenterY)) crossedCenter = true;
+        }
+
+        // 4. ПРИЙНЯТТЯ РІШЕНЬ (ТІЛЬКИ В ЦЕНТРІ)
+        if (crossedCenter) {
+            // "Примагнічуємо" ворога ідеально в центр, щоб не було зміщень
+            enemy.x = tileCenterX;
+            enemy.y = tileCenterY;
+
+            // Дивимося, які шляхи відкриті з цього перехрестя
+            let validDirs = [];
+            if (gridY > 0 && gameMap[gridY-1][gridX] !== 1) validDirs.push('up');
+            if (gridY < MAP_HEIGHT-1 && gameMap[gridY+1][gridX] !== 1) validDirs.push('down');
+            if (gridX > 0 && gameMap[gridY][gridX-1] !== 1) validDirs.push('left');
+            if (gridX < MAP_WIDTH-1 && gameMap[gridY][gridX+1] !== 1) validDirs.push('right');
+
+            // Вороги не можуть миттєво розвернутися (тільки якщо це тупик)
+            let opposite = '';
+            if (enemy.dir === 'up') opposite = 'down';
+            if (enemy.dir === 'down') opposite = 'up';
+            if (enemy.dir === 'left') opposite = 'right';
+            if (enemy.dir === 'right') opposite = 'left';
+
+            // Відкидаємо шлях назад
+            let options = validDirs.filter(d => d !== opposite);
+
+            if (options.length > 0) {
+                // Вибираємо випадковий шлях вперед або вбік
+                enemy.dir = options[Math.floor(Math.random() * options.length)];
+            } else if (validDirs.length > 0) {
+                // Якщо крім шляху назад нічого немає (тупик) - розвертаємось
+                enemy.dir = validDirs[0]; 
+            }
         }
     }
 }
