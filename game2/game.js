@@ -1,14 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.querySelector('#score span');
-
+const winScreen = document.getElementById('win-screen');
 // Встановлюємо розмір canvas
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
 // Створюємо копію карти, щоб можна було змінювати її в грі
 let gameMap = INITIAL_MAP.map(row => [...row]);
+let gameActive = true;
 
+let totalCoins = 0;
+for (let r = 0; r < MAP_HEIGHT; r++) {
+    for (let c = 0; c < MAP_WIDTH; c++) {
+        if (gameMap[r][c] === 0) totalCoins++;
+    }
+}
 // Стан офіціанта
 const waiter = {
     x: TILE_SIZE * 1.5, // Початкова позиція в координатах canvas
