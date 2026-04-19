@@ -2,16 +2,30 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Retro Cafe Waiter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-ui">
-        <h1>Retro Cafe Waiter</h1>
-        <div id="score">Рівень: <span id="level-display">1</span> | Чайові: $<span id="score-display">0</span></div>
+    <div id="game-container">
+        <div id="game-ui">
+            <h1>Retro Cafe Waiter</h1>
+            <div id="score">Рівень: <span id="level-display">1</span> | Чайові: $<span id="score-display">0</span></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="mobile-controls">
+            <div class="control-row">
+                <button id="btn-up" class="dpad-btn">W</button>
+            </div>
+            <div class="control-row">
+                <button id="btn-left" class="dpad-btn">A</button>
+                <button id="btn-down" class="dpad-btn">S</button>
+                <button id="btn-right" class="dpad-btn">D</button>
+            </div>
+        </div>
     </div>
-    <canvas id="gameCanvas"></canvas>
     
     <div id="win-screen" class="screen">
         <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">ЗМІНУ ЗАКРИТО!</h2>
