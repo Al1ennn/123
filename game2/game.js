@@ -6,16 +6,18 @@ let gameMap = [];
 let totalCoins = 0;
 let enemiesList = [];
 let gameActive = false;
+let currentLives = 3; // Додано 3 життя
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score-display');
 const levelSpan = document.getElementById('level-display');
+const livesSpan = document.getElementById('lives-display');
 const winScreen = document.getElementById('win-screen');
 const finalWinScreen = document.getElementById('final-win-screen');
 const loseScreen = document.getElementById('lose-screen');
 
-// --- КАРТИНКИ ОФІЦІАНТА ---
+// --- КАРТИНКИ КУХАРЯ ---
 const sprites = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
 sprites.up.src = 'up.webp';       
 sprites.down.src = 'down.webp';   
@@ -24,7 +26,7 @@ sprites.right.src = 'right.webp';
 
 const waiter = { x: 0, y: 0, size: 0, score: 0, dir: 'right' };
 
-// --- КАРТИНКИ 5 ПРИВИДІВ ---
+// --- КАРТИНКИ ПРИВИДІВ ---
 const ghostSprites = {
     red: { up: new Image(), down: new Image(), left: new Image(), right: new Image() },
     yellow: { up: new Image(), down: new Image(), left: new Image(), right: new Image() },
@@ -33,33 +35,23 @@ const ghostSprites = {
     green: { up: new Image(), down: new Image(), left: new Image(), right: new Image() }
 };
 
-// Червоний
-ghostSprites.red.up.src = 'red_up.webp';
-ghostSprites.red.down.src = 'red_down.webp';
-ghostSprites.red.left.src = 'red_left.webp';
-ghostSprites.red.right.src = 'red_right.webp';
-// Жовтий
-ghostSprites.yellow.up.src = 'yellow_up.webp';
-ghostSprites.yellow.down.src = 'yellow_down.webp';
-ghostSprites.yellow.left.src = 'yellow_left.webp';
-ghostSprites.yellow.right.src = 'yellow_right.webp';
-// Фіолетовий
-ghostSprites.purple.up.src = 'purple_up.webp';
-ghostSprites.purple.down.src = 'purple_down.webp';
-ghostSprites.purple.left.src = 'purple_left.webp';
-ghostSprites.purple.right.src = 'purple_right.webp';
-// Синій
-ghostSprites.blue.up.src = 'blue_up.webp';
-ghostSprites.blue.down.src = 'blue_down.webp';
-ghostSprites.blue.left.src = 'blue_left.webp';
-ghostSprites.blue.right.src = 'blue_right.webp';
-// Зелений
-ghostSprites.green.up.src = 'green_up.webp';
-ghostSprites.green.down.src = 'green_down.webp';
-ghostSprites.green.left.src = 'green_left.webp';
-ghostSprites.green.right.src = 'green_right.webp';
+ghostSprites.red.up.src = 'red_up.webp'; ghostSprites.red.down.src = 'red_down.webp'; ghostSprites.red.left.src = 'red_left.webp'; ghostSprites.red.right.src = 'red_right.webp';
+ghostSprites.yellow.up.src = 'yellow_up.webp'; ghostSprites.yellow.down.src = 'yellow_down.webp'; ghostSprites.yellow.left.src = 'yellow_left.webp'; ghostSprites.yellow.right.src = 'yellow_right.webp';
+ghostSprites.purple.up.src = 'purple_up.webp'; ghostSprites.purple.down.src = 'purple_down.webp'; ghostSprites.purple.left.src = 'purple_left.webp'; ghostSprites.purple.right.src = 'purple_right.webp';
+ghostSprites.blue.up.src = 'blue_up.webp'; ghostSprites.blue.down.src = 'blue_down.webp'; ghostSprites.blue.left.src = 'blue_left.webp'; ghostSprites.blue.right.src = 'blue_right.webp';
+ghostSprites.green.up.src = 'green_up.webp'; ghostSprites.green.down.src = 'green_down.webp'; ghostSprites.green.left.src = 'green_left.webp'; ghostSprites.green.right.src = 'green_right.webp';
 
-// --- ФУНКЦІЯ ЗАВАНТАЖЕННЯ РІВНЯ ---
+function resetPositions() {
+    const config = levelsData[currentLevelIndex];
+    waiter.x = TILE_SIZE * config.waiterStart.x; 
+    waiter.y = TILE_SIZE * config.waiterStart.y;
+    waiter.dir = 'right';
+
+    enemiesList = config.enemies.map(e => ({
+        x: TILE_SIZE * e.x, y: TILE_SIZE * e.y, color: e.color, dir: e.dir, size: TILE_SIZE * 1.2, started: false
+    }));
+}
+
 function loadLevel(index) {
     const config = levelsData[index];
     TILE_SIZE = config.tileSize; WAITER_SPEED = config.waiterSpeed; ENEMY_SPEED = config.enemySpeed;
@@ -74,13 +66,13 @@ function loadLevel(index) {
         for (let c = 0; c < MAP_WIDTH; c++) if (gameMap[r][c] === 0) totalCoins++;
     }
 
-    waiter.x = TILE_SIZE * config.waiterStart.x; waiter.y = TILE_SIZE * config.waiterStart.y;
-    waiter.size = TILE_SIZE * 1.2; waiter.score = 0; waiter.dir = 'right';
+    waiter.size = TILE_SIZE * 1.2; waiter.score = 0; 
     scoreSpan.innerText = waiter.score; levelSpan.innerText = index + 1;
+    
+    currentLives = 3;
+    livesSpan.innerText = '❤️❤️❤️';
 
-    enemiesList = config.enemies.map(e => ({
-        x: TILE_SIZE * e.x, y: TILE_SIZE * e.y, color: e.color, dir: e.dir, size: TILE_SIZE * 1.2, started: false
-    }));
+    resetPositions();
 
     winScreen.style.display = 'none'; finalWinScreen.style.display = 'none'; loseScreen.style.display = 'none';
     gameActive = true;
@@ -90,7 +82,6 @@ document.getElementById('next-level-btn').addEventListener('click', () => {
     currentLevelIndex++; loadLevel(currentLevelIndex); 
 });
 
-// --- МАЛЮВАННЯ ТА ЛОГІКА ---
 function drawMap() {
     for (let r = 0; r < MAP_HEIGHT; r++) {
         for (let c = 0; c < MAP_WIDTH; c++) {
@@ -118,16 +109,13 @@ function drawEnemies() {
     for (let enemy of enemiesList) {
         let ghostImages = ghostSprites[enemy.color];
         let img;
-        if (enemy.dir === 'up') img = ghostImages.up;
-        else if (enemy.dir === 'down') img = ghostImages.down;
-        else if (enemy.dir === 'left') img = ghostImages.left;
-        else if (enemy.dir === 'right') img = ghostImages.right;
+        if (enemy.dir === 'up') img = ghostImages.up; else if (enemy.dir === 'down') img = ghostImages.down;
+        else if (enemy.dir === 'left') img = ghostImages.left; else if (enemy.dir === 'right') img = ghostImages.right;
 
         if (img && img.complete && img.naturalWidth !== 0) {
             ctx.drawImage(img, enemy.x - enemy.size / 2, enemy.y - enemy.size / 2, enemy.size, enemy.size);
         } else {
-            ctx.fillStyle = enemy.color;
-            ctx.fillRect(enemy.x - enemy.size / 2, enemy.y - enemy.size / 2, enemy.size, enemy.size);
+            ctx.fillStyle = enemy.color; ctx.fillRect(enemy.x - enemy.size / 2, enemy.y - enemy.size / 2, enemy.size, enemy.size);
         }
     }
 }
@@ -166,7 +154,6 @@ function moveWaiter() {
     }
 }
 
-// --- ШТУЧНИЙ ІНТЕЛЕКТ ВОРОГІВ ---
 function moveEnemies() {
     for (let enemy of enemiesList) {
         let gridX = Math.floor(enemy.x / TILE_SIZE); let gridY = Math.floor(enemy.y / TILE_SIZE);
@@ -214,42 +201,29 @@ function moveEnemies() {
                 let waiterGridX = Math.floor(waiter.x / TILE_SIZE);
                 let waiterGridY = Math.floor(waiter.y / TILE_SIZE);
 
-                // Обираємо ціль залежно від кольору (характеру)
-                if (enemy.color === 'red') {
-                    targetX = waiterGridX; targetY = waiterGridY;
-                    useTargeting = true;
-                } else if (enemy.color === 'purple') {
+                if (enemy.color === 'red') { targetX = waiterGridX; targetY = waiterGridY; useTargeting = true; }
+                else if (enemy.color === 'purple') {
                     targetX = waiterGridX; targetY = waiterGridY;
                     if (waiter.dir === 'up') targetY -= 4; if (waiter.dir === 'down') targetY += 4;
                     if (waiter.dir === 'left') targetX -= 4; if (waiter.dir === 'right') targetX += 4;
                     useTargeting = true;
                 } else if (enemy.color === 'yellow') {
                     let dist = Math.abs(waiterGridX - gridX) + Math.abs(waiterGridY - gridY);
-                    if (dist < 6) { targetX = 0; targetY = MAP_HEIGHT - 1; } // Тікає в лівий нижній кут
-                    else { targetX = waiterGridX; targetY = waiterGridY; }
+                    if (dist < 6) { targetX = 0; targetY = MAP_HEIGHT - 1; } else { targetX = waiterGridX; targetY = waiterGridY; }
                     useTargeting = true;
                 }
 
                 if (useTargeting) {
-                    let bestDir = options[0];
-                    let minDist = Infinity;
-                    // Шукаємо шлях, який фізично найближчий до цілі
+                    let bestDir = options[0]; let minDist = Infinity;
                     for (let d of options) {
                         let nextX = gridX; let nextY = gridY;
-                        if (d === 'up') nextY--; if (d === 'down') nextY++;
-                        if (d === 'left') nextX--; if (d === 'right') nextX++;
-                        
+                        if (d === 'up') nextY--; if (d === 'down') nextY++; if (d === 'left') nextX--; if (d === 'right') nextX++;
                         let distToTarget = Math.pow(targetX - nextX, 2) + Math.pow(targetY - nextY, 2);
                         if (distToTarget < minDist) { minDist = distToTarget; bestDir = d; }
                     }
                     enemy.dir = bestDir;
-                } else {
-                    // Синій і Зелений ходять хаотично
-                    enemy.dir = options[Math.floor(Math.random() * options.length)];
-                }
-            } else if (validDirs.length > 0) {
-                enemy.dir = validDirs[0]; // Тупик, розвертаємось
-            }
+                } else { enemy.dir = options[Math.floor(Math.random() * options.length)]; }
+            } else if (validDirs.length > 0) { enemy.dir = validDirs[0]; }
         }
     }
 }
@@ -274,7 +248,15 @@ function checkEnemyHit() {
         let dx = waiter.x - enemy.x; let dy = waiter.y - enemy.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < (TILE_SIZE * 0.3 + enemy.size / 2)) {
-            gameActive = false; loseScreen.style.display = 'flex'; 
+            currentLives--; // Віднімаємо життя
+            if (currentLives <= 0) {
+                gameActive = false; 
+                loseScreen.style.display = 'flex'; 
+            } else {
+                livesSpan.innerText = '❤️'.repeat(currentLives); // Оновлюємо сердечка
+                resetPositions(); // Повертаємо всіх на старт
+            }
+            break; // Виходимо з циклу, щоб не відняти 2 життя за 1 мілісекунду
         }
     }
 }
