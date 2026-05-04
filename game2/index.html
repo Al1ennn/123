@@ -31,24 +31,22 @@
         </div>
     </div>
     
-    <!-- Екран перемоги з РЕЦЕПТОМ -->
     <div id="win-screen" class="screen">
         <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">ІНГРЕДІЄНТИ ЗІБРАНО!</h2>
-        <div style="background: rgba(0,0,0,0.6); padding: 15px 25px; border-radius: 10px; max-width: 600px; border: 2px solid #0f0; margin: 15px;">
-            <h3 id="recipe-title" style="color: #ff0; margin-top: 0; font-size: 1.5em;"></h3>
-            <p id="recipe-text" style="font-size: 1.1em; text-align: justify; line-height: 1.4;"></p>
+        <div class="recipe-box">
+            <h3 id="recipe-title"></h3>
+            <p id="recipe-text"></p>
         </div>
         <button id="next-level-btn" style="color: #0f0; border-color: #0f0;">👉 Готувати далі</button>
     </div>
 
-    <!-- Фінальний екран -->
     <div id="final-win-screen" class="screen">
         <h2 style="color: #0ff; text-shadow: 0 0 20px #0ff;">ЛЕГЕНДА КУЛІНАРІЇ!</h2>
-        <div style="background: rgba(0,0,0,0.6); padding: 15px 25px; border-radius: 10px; max-width: 600px; border: 2px solid #0ff; margin: 15px;">
-            <h3 id="final-recipe-title" style="color: #ff0; margin-top: 0; font-size: 1.5em;"></h3>
-            <p id="final-recipe-text" style="font-size: 1.1em; text-align: justify; line-height: 1.4;"></p>
+        <div class="recipe-box" style="border-color: #0ff;">
+            <h3 id="final-recipe-title" style="color: #ff0;"></h3>
+            <p id="final-recipe-text"></p>
         </div>
-        <button onclick="location.reload()" style="color: #0ff; border-color: #0ff; margin-top: 10px;">🔄 Зіграти ще раз</button>
+        <button onclick="location.reload()" style="color: #0ff; border-color: #0ff;">🔄 Зіграти ще раз</button>
     </div>
 
     <div id="lose-screen" class="screen">
@@ -144,3 +142,8 @@
         }
     ]
     </script>
+    
+    <script src="controls.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
