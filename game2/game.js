@@ -8,20 +8,26 @@ let enemiesList = [];
 let gameActive = false;
 let currentLives = 3; 
 
-// --- ТЕКСТИ РЕЦЕПТІВ ДЛЯ КОЖНОГО РІВНЯ ---
+// --- 9 РЕЦЕПТІВ (ПО 3 НА КОЖЕН РІВЕНЬ) ---
 const recipes = [
-    {
-        title: "Кіш Лорен (Франція, 1970-ті)",
-        text: "Цей відкритий пиріг став справжнім хітом вечірок 70-х! Спечіть основу з пісочного тіста. Для начинки обсмажте бекон, змішайте його з тертим сиром Грюєр, залийте сумішшю з жирних вершків та збитих яєць, і запікайте до золотої скоринки."
-    },
-    {
-        title: "Сирне Фондю (Швейцарія, 1960-ті)",
-        text: "Символ затишних посиденьок! Розігрійте в казанку біле сухе вино з розчавленим часником. Поступово додавайте натерті сири Грюєр та Емменталь, постійно помішуючи. Додайте дрібку мускатного горіха і вмочуйте хрусткий багет!"
-    },
-    {
-        title: "Тірамісу (Італія, 1980-ті)",
-        text: "Справжня кулінарна легенда 80-х! Збийте жовтки з цукром та сиром Маскарпоне до повітряного крему. Печиво Савоярді швидко занурте в міцну каву еспресо. Викладіть шарами печиво та крем, а зверху густо посипте какао. Дайте настоятися ніч у холодильнику!"
-    }
+    // Рівень 1 (Закуски / Прості страви)
+    [
+        { title: "Кіш Лорен (Франція, 1970-ті)", text: "Цей відкритий пиріг став справжнім хітом вечірок 70-х! Спечіть основу з пісочного тіста. Для начинки обсмажте бекон, змішайте його з тертим сиром Грюєр, залийте сумішшю з жирних вершків та збитих яєць, і запікайте до золотої скоринки." },
+        { title: "Тост «Гаваї» (Німеччина, 1950-ті)", text: "Символ економічного дива! На шматочок тостового хліба покладіть шинку, кільце консервованого ананаса і накрийте скибочкою сиру. Запікайте, поки сир не розплавиться. Прикрасьте коктейльною вишенькою в центрі." },
+        { title: "Коктейль з креветок (Британія, 1960-ті)", text: "Абсолютна класика ретро-вечірок! Змішайте майонез, трохи кетчупу, краплю вустерського соусу та лимонний сік (це легендарний соус 'Марі Роуз'). Викладіть відварені креветки на листя салату в келих і полийте соусом." }
+    ],
+    // Рівень 2 (Основні страви)
+    [
+        { title: "Сирне Фондю (Швейцарія, 1960-ті)", text: "Символ затишних посиденьок! Розігрійте в казанку біле сухе вино з розчавленим часником. Поступово додавайте натерті сири Грюєр та Емменталь, постійно помішуючи. Додайте дрібку мускатного горіха і вмочуйте хрусткий багет!" },
+        { title: "Яловичина Веллінгтон (Британія, 1960-ті)", text: "Улюблена страва зірок 60-х! Обсмажте ніжну яловичу вирізку. Обмажте її грибним паштетом, загорніть у пармську шинку, а потім — у листкове тісто. Запікайте до хрусткої золотистої скоринки." },
+        { title: "Паста Прімавера (США, 1970-ті)", text: "Хіт нью-йоркських ресторанів 70-х! Відваріть спагеті. Окремо швидко обсмажте весняні овочі: броколі, горошок, цукіні та помідори чері. Змішайте пасту з овочами, жирними вершками, часником і великою кількістю пармезану." }
+    ],
+    // Рівень 3 (Десерти)
+    [
+        { title: "Тірамісу (Італія, 1980-ті)", text: "Справжня кулінарна легенда 80-х! Збийте жовтки з цукром та сиром Маскарпоне до повітряного крему. Печиво Савоярді швидко занурте в міцну каву еспресо. Викладіть шарами печиво та крем, а зверху густо посипте какао. Дайте настоятися ніч у холодильнику!" },
+        { title: "Торт «Чорний Ліс» (Німеччина, 1970-ті)", text: "Шоколадна мрія! Спечіть пухкий шоколадний бісквіт. Просочіть його вишневим лікером (кіршвассер). Викладіть шарами бісквіт, густі збиті вершки та консервовані вишні. Зверху щедро посипте шоколадною стружкою." },
+        { title: "Банановий спліт (США, 1950-ті)", text: "Король американських дайнерів! Розріжте банан уздовж і покладіть у довгу тарілку (човник). Додайте три кульки морозива: ванільне, шоколадне і полуничне. Полийте шоколадним сиропом, додайте збиті вершки та коктейльні вишні." }
+    ]
 ];
 
 const canvas = document.getElementById('gameCanvas');
@@ -33,7 +39,6 @@ const winScreen = document.getElementById('win-screen');
 const finalWinScreen = document.getElementById('final-win-screen');
 const loseScreen = document.getElementById('lose-screen');
 
-// --- КАРТИНКИ КУХАРЯ ---
 const sprites = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
 sprites.up.src = 'up.webp';       
 sprites.down.src = 'down.webp';   
@@ -42,7 +47,6 @@ sprites.right.src = 'right.webp';
 
 const waiter = { x: 0, y: 0, size: 0, score: 0, dir: 'right' };
 
-// --- КАРТИНКИ ПРИВИДІВ ---
 const ghostSprites = {
     red: { up: new Image(), down: new Image(), left: new Image(), right: new Image() },
     yellow: { up: new Image(), down: new Image(), left: new Image(), right: new Image() },
@@ -105,25 +109,21 @@ function drawMap() {
             if (gameMap[r][c] === 1) { 
                 ctx.fillStyle = '#1e003b'; ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1);
             } else if (gameMap[r][c] === 0) { 
-                // --- МАЛЮЄМО МІШЕЧОК ІЗ ІНГРЕДІЄНТАМИ ---
                 let cx = x + TILE_SIZE / 2; 
                 let cy = y + TILE_SIZE / 2; 
-                let s = TILE_SIZE * 0.25; // Розмір мішечка
+                let s = TILE_SIZE * 0.25; 
                 
-                // Основна частина мішечка (низ)
-                ctx.fillStyle = '#d2b48c'; // Колір мішковини
+                ctx.fillStyle = '#d2b48c'; 
                 ctx.beginPath(); 
                 ctx.arc(cx, cy + s*0.2, s, 0, Math.PI * 2); 
                 ctx.fill(); 
                 
-                // Верхня частина (де зав'язано)
                 ctx.beginPath(); 
                 ctx.moveTo(cx - s*0.6, cy - s); 
                 ctx.lineTo(cx + s*0.6, cy - s); 
                 ctx.lineTo(cx, cy); 
                 ctx.fill(); 
                 
-                // Мотузочка
                 ctx.strokeStyle = '#8b5a2b'; 
                 ctx.lineWidth = 2; 
                 ctx.beginPath(); 
@@ -274,18 +274,20 @@ function collectMoney() {
         if (gameMap[gridY][gridX] === 0) {
             gameMap[gridY][gridX] = 2; waiter.score += 1; scoreSpan.innerText = waiter.score; 
 
-            // ЯКЩО ЗІБРАВ УСІ ІНГРЕДІЄНТИ
             if (waiter.score === totalCoins) {
                 gameActive = false; 
+                
+                // --- МАГІЯ РАНДОМУ: ВИБИРАЄМО 1 З 3 РЕЦЕПТІВ ДЛЯ ЦЬОГО РІВНЯ ---
+                let levelRecipes = recipes[currentLevelIndex];
+                let randomRecipe = levelRecipes[Math.floor(Math.random() * levelRecipes.length)];
+
                 if (currentLevelIndex < levelsData.length - 1) {
-                    // Вставляємо рецепт в HTML і показуємо екран переходу
-                    document.getElementById('recipe-title').innerText = recipes[currentLevelIndex].title;
-                    document.getElementById('recipe-text').innerText = recipes[currentLevelIndex].text;
+                    document.getElementById('recipe-title').innerText = randomRecipe.title;
+                    document.getElementById('recipe-text').innerText = randomRecipe.text;
                     winScreen.style.display = 'flex'; 
                 } else {
-                    // Фінальний екран і фінальний рецепт
-                    document.getElementById('final-recipe-title').innerText = recipes[currentLevelIndex].title;
-                    document.getElementById('final-recipe-text').innerText = recipes[currentLevelIndex].text;
+                    document.getElementById('final-recipe-title').innerText = randomRecipe.title;
+                    document.getElementById('final-recipe-text').innerText = randomRecipe.text;
                     finalWinScreen.style.display = 'flex'; 
                 }
             }
