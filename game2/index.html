@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Шалений Кухар: Збери інгредієнти</title>
+    <title>Шалений Кухар: Ретро Рецепти</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,24 +31,29 @@
         </div>
     </div>
     
+    <!-- Екран перемоги з РЕЦЕПТОМ -->
     <div id="win-screen" class="screen">
-        <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">СТРАВА ГОТОВА!</h2>
-        <p>Ти зібрав усі необхідні інгредієнти.</p>
-        <div style="display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; justify-content: center;">
-            <button id="next-level-btn" style="color: #0f0; border-color: #0f0;">👉 Наступний рецепт</button>
-            <button onclick="alert('РЕЦЕПТ ВІДКРИТО!\n\nСекрет ідеального борщу: додайте трохи чорносливу та ложку меду наприкінці варіння!'); location.reload();" style="color: #ff0; border-color: #ff0;">📖 Прочитати рецепт</button>
+        <h2 style="color: #0f0; text-shadow: 0 0 20px #0f0;">ІНГРЕДІЄНТИ ЗІБРАНО!</h2>
+        <div style="background: rgba(0,0,0,0.6); padding: 15px 25px; border-radius: 10px; max-width: 600px; border: 2px solid #0f0; margin: 15px;">
+            <h3 id="recipe-title" style="color: #ff0; margin-top: 0; font-size: 1.5em;"></h3>
+            <p id="recipe-text" style="font-size: 1.1em; text-align: justify; line-height: 1.4;"></p>
         </div>
+        <button id="next-level-btn" style="color: #0f0; border-color: #0f0;">👉 Готувати далі</button>
     </div>
 
+    <!-- Фінальний екран -->
     <div id="final-win-screen" class="screen">
-        <h2 style="color: #0ff; text-shadow: 0 0 20px #0ff;">ШЕФ-КУХАР МІШЛЕН!</h2>
-        <p>Ти пройшов усі 3 кухні і не зіпсував жодної страви.</p>
-        <button onclick="alert('ВІТАЄМО!\n\nТи відкрив доступ до нашої секретної кулінарної книги на сайті!'); location.reload();" style="color: #0ff; border-color: #0ff; margin-top: 20px;">👑 Забрати супер-рецепт</button>
+        <h2 style="color: #0ff; text-shadow: 0 0 20px #0ff;">ЛЕГЕНДА КУЛІНАРІЇ!</h2>
+        <div style="background: rgba(0,0,0,0.6); padding: 15px 25px; border-radius: 10px; max-width: 600px; border: 2px solid #0ff; margin: 15px;">
+            <h3 id="final-recipe-title" style="color: #ff0; margin-top: 0; font-size: 1.5em;"></h3>
+            <p id="final-recipe-text" style="font-size: 1.1em; text-align: justify; line-height: 1.4;"></p>
+        </div>
+        <button onclick="location.reload()" style="color: #0ff; border-color: #0ff; margin-top: 10px;">🔄 Зіграти ще раз</button>
     </div>
 
     <div id="lose-screen" class="screen">
-        <h2 style="color: #f00; text-shadow: 0 0 20px #f00;">СТРАВУ ЗІПСОВАНО!</h2>
-        <p>Кухня закривається на прибирання.</p>
+        <h2 style="color: #f00; text-shadow: 0 0 20px #f00;">КУХНЯ ЗГОРІЛА!</h2>
+        <p>Ти втратив усі життя.</p>
         <button onclick="location.reload()">Спробувати ще раз</button>
     </div>
 
@@ -56,8 +61,8 @@
     [
         {
             "tileSize": 36,
-            "waiterSpeed": 2.2,
-            "enemySpeed": 1.2,
+            "waiterSpeed": 1.8,
+            "enemySpeed": 1.0,
             "waiterStart": {"x": 1.5, "y": 1.5},
             "enemies": [
                 {"x": 9.5, "y": 7.5, "color": "red", "dir": "up"},
@@ -81,8 +86,8 @@
         },
         {
             "tileSize": 30,
-            "waiterSpeed": 2.5,
-            "enemySpeed": 1.5,
+            "waiterSpeed": 1.8,
+            "enemySpeed": 1.15,
             "waiterStart": {"x": 1.5, "y": 1.5},
             "enemies": [
                 {"x": 11.5, "y": 7.5, "color": "red", "dir": "up"},
@@ -109,8 +114,8 @@
         },
         {
             "tileSize": 24,
-            "waiterSpeed": 2.8,
-            "enemySpeed": 1.7,
+            "waiterSpeed": 1.8,
+            "enemySpeed": 1.3,
             "waiterStart": {"x": 1.5, "y": 1.5},
             "enemies": [
                 {"x": 13.5, "y": 8.5, "color": "red", "dir": "up"},
