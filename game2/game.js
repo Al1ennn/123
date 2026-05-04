@@ -6,7 +6,23 @@ let gameMap = [];
 let totalCoins = 0;
 let enemiesList = [];
 let gameActive = false;
-let currentLives = 3; // Додано 3 життя
+let currentLives = 3; 
+
+// --- ТЕКСТИ РЕЦЕПТІВ ДЛЯ КОЖНОГО РІВНЯ ---
+const recipes = [
+    {
+        title: "Кіш Лорен (Франція, 1970-ті)",
+        text: "Цей відкритий пиріг став справжнім хітом вечірок 70-х! Спечіть основу з пісочного тіста. Для начинки обсмажте бекон, змішайте його з тертим сиром Грюєр, залийте сумішшю з жирних вершків та збитих яєць, і запікайте до золотої скоринки."
+    },
+    {
+        title: "Сирне Фондю (Швейцарія, 1960-ті)",
+        text: "Символ затишних посиденьок! Розігрійте в казанку біле сухе вино з розчавленим часником. Поступово додавайте натерті сири Грюєр та Емменталь, постійно помішуючи. Додайте дрібку мускатного горіха і вмочуйте хрусткий багет!"
+    },
+    {
+        title: "Тірамісу (Італія, 1980-ті)",
+        text: "Справжня кулінарна легенда 80-х! Збийте жовтки з цукром та сиром Маскарпоне до повітряного крему. Печиво Савоярді швидко занурте в міцну каву еспресо. Викладіть шарами печиво та крем, а зверху густо посипте какао. Дайте настоятися ніч у холодильнику!"
+    }
+];
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -89,7 +105,31 @@ function drawMap() {
             if (gameMap[r][c] === 1) { 
                 ctx.fillStyle = '#1e003b'; ctx.fillRect(x, y, TILE_SIZE + 1, TILE_SIZE + 1);
             } else if (gameMap[r][c] === 0) { 
-                ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE * 0.15, 0, Math.PI * 2); ctx.fill();
+                // --- МАЛЮЄМО МІШЕЧОК ІЗ ІНГРЕДІЄНТАМИ ---
+                let cx = x + TILE_SIZE / 2; 
+                let cy = y + TILE_SIZE / 2; 
+                let s = TILE_SIZE * 0.25; // Розмір мішечка
+                
+                // Основна частина мішечка (низ)
+                ctx.fillStyle = '#d2b48c'; // Колір мішковини
+                ctx.beginPath(); 
+                ctx.arc(cx, cy + s*0.2, s, 0, Math.PI * 2); 
+                ctx.fill(); 
+                
+                // Верхня частина (де зав'язано)
+                ctx.beginPath(); 
+                ctx.moveTo(cx - s*0.6, cy - s); 
+                ctx.lineTo(cx + s*0.6, cy - s); 
+                ctx.lineTo(cx, cy); 
+                ctx.fill(); 
+                
+                // Мотузочка
+                ctx.strokeStyle = '#8b5a2b'; 
+                ctx.lineWidth = 2; 
+                ctx.beginPath(); 
+                ctx.moveTo(cx - s*0.5, cy - s*0.2); 
+                ctx.lineTo(cx + s*0.5, cy - s*0.2); 
+                ctx.stroke();
             }
         }
     }
@@ -234,10 +274,20 @@ function collectMoney() {
         if (gameMap[gridY][gridX] === 0) {
             gameMap[gridY][gridX] = 2; waiter.score += 1; scoreSpan.innerText = waiter.score; 
 
+            // ЯКЩО ЗІБРАВ УСІ ІНГРЕДІЄНТИ
             if (waiter.score === totalCoins) {
                 gameActive = false; 
-                if (currentLevelIndex < levelsData.length - 1) winScreen.style.display = 'flex'; 
-                else finalWinScreen.style.display = 'flex'; 
+                if (currentLevelIndex < levelsData.length - 1) {
+                    // Вставляємо рецепт в HTML і показуємо екран переходу
+                    document.getElementById('recipe-title').innerText = recipes[currentLevelIndex].title;
+                    document.getElementById('recipe-text').innerText = recipes[currentLevelIndex].text;
+                    winScreen.style.display = 'flex'; 
+                } else {
+                    // Фінальний екран і фінальний рецепт
+                    document.getElementById('final-recipe-title').innerText = recipes[currentLevelIndex].title;
+                    document.getElementById('final-recipe-text').innerText = recipes[currentLevelIndex].text;
+                    finalWinScreen.style.display = 'flex'; 
+                }
             }
         }
     }
@@ -248,15 +298,15 @@ function checkEnemyHit() {
         let dx = waiter.x - enemy.x; let dy = waiter.y - enemy.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < (TILE_SIZE * 0.3 + enemy.size / 2)) {
-            currentLives--; // Віднімаємо життя
+            currentLives--; 
             if (currentLives <= 0) {
                 gameActive = false; 
                 loseScreen.style.display = 'flex'; 
             } else {
-                livesSpan.innerText = '❤️'.repeat(currentLives); // Оновлюємо сердечка
-                resetPositions(); // Повертаємо всіх на старт
+                livesSpan.innerText = '❤️'.repeat(currentLives); 
+                resetPositions(); 
             }
-            break; // Виходимо з циклу, щоб не відняти 2 життя за 1 мілісекунду
+            break; 
         }
     }
 }
