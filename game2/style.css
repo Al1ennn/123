@@ -1,3 +1,4 @@
+/* --- ОСНОВНІ НАЛАШТУВАННЯ --- */
 body {
     background-color: #1a1a1a;
     color: #0ff;
@@ -9,9 +10,10 @@ body {
     min-height: 100vh; 
     margin: 0;
     overflow: hidden; 
-    touch-action: none; 
+    touch-action: none; /* Забороняє випадкові свайпи та зум на телефоні */
 }
 
+/* Контейнер, щоб усе було по центру */
 #game-container {
     display: flex;
     flex-direction: column;
@@ -20,6 +22,7 @@ body {
     max-width: 100vw;
 }
 
+/* --- ІНТЕРФЕЙС (ЗАГОЛОВОК, СТАТИСТИКА) --- */
 #game-ui {
     text-align: center;
     margin-bottom: 5px;
@@ -32,7 +35,6 @@ h1 {
     text-shadow: 0 0 5px #0ff;
 }
 
-/* Новий блок для статистики (рівень, інгредієнти, життя) */
 #top-stats {
     display: flex;
     justify-content: space-around;
@@ -45,22 +47,25 @@ h1 {
     border: 1px solid #0ff;
 }
 
+/* --- ІГРОВЕ ПОЛЕ (CANVAS) --- */
 canvas {
     background-color: #000;
     border: 3px solid #f0f;
     box-shadow: 0 0 20px #f0f;
     
-    /* Краща мобільна адаптація */
+    /* Адаптація для телефонів */
     max-width: 95vw;   
-    max-height: 55vh;  /* Ще жорсткіше обмеження, щоб влізли кнопки */
+    max-height: 55vh; 
     height: auto;
     
+    /* Фікс чіткості пікселів */
     image-rendering: pixelated; 
     image-rendering: -moz-crisp-edges; 
     image-rendering: -webkit-crisp-edges; 
     image-rendering: crisp-edges; 
 }
 
+/* --- МОБІЛЬНИЙ ДЖОЙСТИК (W A S D) --- */
 #mobile-controls {
     margin-top: 15px;
     display: flex;
@@ -76,7 +81,7 @@ canvas {
 }
 
 .dpad-btn {
-    width: 70px; /* Зробили кнопки більшими для пальців */
+    width: 70px; 
     height: 70px;
     background-color: rgba(0, 255, 255, 0.1);
     border: 2px solid #0ff;
@@ -90,11 +95,13 @@ canvas {
     align-items: center;
     cursor: pointer;
     
+    /* Блокуємо виділення тексту при швидкому натисканні */
     user-select: none; 
     -webkit-user-select: none;
     touch-action: manipulation;
 }
 
+/* Анімація натискання кнопки джойстика */
 .dpad-btn:active {
     background-color: #0ff;
     color: #000;
@@ -102,6 +109,7 @@ canvas {
     box-shadow: 0 0 15px #0ff;
 }
 
+/* Ховаємо джойстик на великих екранах (ПК) */
 @media (min-width: 900px) {
     #mobile-controls {
         display: none;
@@ -117,6 +125,7 @@ canvas {
     }
 }
 
+/* --- ЕКРАНИ (ПЕРЕМОГА, ПРОГРАШ) --- */
 .screen {
     position: fixed; 
     top: 0;
@@ -124,7 +133,7 @@ canvas {
     width: 100vw;
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.85);
-    display: none; 
+    display: none; /* Приховано за замовчуванням */
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -137,16 +146,46 @@ canvas {
     margin: 10px;
 }
 
-.screen p {
-    font-size: 1.2em;
-    color: #fff;
-    text-align: center;
-    padding: 0 20px;
+/* СТИЛЬ ДЛЯ ВІКНА З РЕЦЕПТОМ (Виправляє помилку зі скріншота) */
+.recipe-box {
+    background: rgba(0, 0, 0, 0.9); 
+    padding: 20px 30px; 
+    border-radius: 15px; 
+    max-width: 600px; 
+    width: 85%; /* Щоб на телефоні не прилипало до країв */
+    border: 3px solid #0f0; 
+    margin: 20px auto;
+    text-align: center; 
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); 
 }
 
+.recipe-box h3 {
+    margin-top: 0; 
+    font-size: 1.6em;
+    color: #ff0;
+    text-shadow: 0 0 10px #ff0;
+    margin-bottom: 15px;
+}
+
+.recipe-box p {
+    font-size: 1.2em; 
+    text-align: center; 
+    line-height: 1.5;
+    color: #fff;
+    margin: 0;
+}
+
+/* Текст для екрана програшу */
+.screen > p {
+    font-size: 1.5em;
+    color: #fff;
+    text-align: center;
+}
+
+/* Універсальний стиль для кнопок меню (Спробувати ще раз, Готувати далі) */
 .screen button {
-    padding: 15px 25px;
-    font-size: 1.1em;
+    padding: 15px 30px;
+    font-size: 1.2em;
     font-family: inherit;
     font-weight: bold;
     background-color: #000;
@@ -155,9 +194,10 @@ canvas {
     transition: all 0.2s;
     border-width: 3px;
     border-style: solid;
-    margin-top: 10px;
+    margin-top: 15px;
 }
 
+/* Неонове світіння кнопки при наведенні мишкою */
 .screen button:hover {
     background-color: currentColor; 
     color: #000 !important;
